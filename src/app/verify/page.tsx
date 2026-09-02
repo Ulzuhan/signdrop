@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { ShieldCheck, ShieldAlert, ShieldQuestion, FileSearch, ArrowLeft, Copy, Check, Clock, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { verifyPdfSignatures, type PdfVerification, type SignatureReport, type CertificateSummary } from '@/lib/pades-verifier';
+import { verifyPdfSignatures, type PdfVerification, type SignatureReport, type CertificateSummary, type TrustAnchor, type TrustReport } from '@/lib/pades-verifier';
 import { inspectSignedPdf } from '@/lib/pdf-engine';
 import { formatShortHash } from '@/lib/crypto';
 
@@ -20,6 +20,57 @@ interface Result {
   fileSize: number;
   verification: PdfVerification;
   metadata: Awaited<ReturnType<typeof inspectSignedPdf>>;
+  store: TrustStoreInfo | null;
+}
+
+interface TrustStoreInfo {
+  tslSequenceNumber: number;
+  tslIssued: string;
+  retrievedAt: string;
+  anchors: number;
+}
+
+/**
+ * The trust store is ~900 KB of certificates from the Spanish trusted list,
+ * fetched from this same origin the first time a file is checked and kept
+ * for the page's life. Without it the maths are still checked; only the
+ * "who issued this" judgement is left out, and the page says so.
+ */
+let storePromise: Promise<{ anchors: TrustAnchor[]; info: TrustStoreInfo } | null> | null = null;
+function loadTrustStore() {
+  if (!storePromise) {
+    storePromise = fetch('/trust/es-trusted-list.json')
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = await res.json();
+        return {
+          anchors: data.anchors as TrustAnchor[],
+          info: { tslSequenceNumber: data.source.tslSequenceNumber, tslIssued: data.source.tslIssued, retrievedAt: data.source.retrievedAt, anchors: data.anchors.length },
+        };
+      })
+      .catch(() => null);
+  }
+  return storePromise;
+}
+
+function Trust({ trust }: { trust: TrustReport | null }) {
+  if (!trust) return <p className="text-xs text-muted-foreground">Issuer not judged: the trust list could not be loaded.</p>;
+  if (trust.trusted && trust.service) {
+    return (
+      <p className="text-xs">
+        <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-300">on the trusted list</span>
+        <span className="ms-2 text-foreground">{trust.service.provider}</span>
+        <span className="text-muted-foreground"> · {trust.service.service}</span>
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs">
+      <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[11px] text-amber-300">not on the trusted list</span>
+      {trust.service && <span className="ms-2 text-foreground">{trust.service.provider}</span>}
+      {trust.reason && <span className="ms-2 text-muted-foreground">{trust.reason}</span>}
+    </p>
+  );
 }
 
 function formatWhen(iso: string | null): string {
@@ -78,7 +129,10 @@ function Signature({ s, fileSize }: { s: SignatureReport; fileSize: number }) {
 
       <div className="mt-4 space-y-4">
         {s.signer ? (
-          <Certificate cert={s.signer} label="Signed by" />
+          <>
+            <Certificate cert={s.signer} label="Signed by" />
+            <Trust trust={s.trust} />
+          </>
         ) : (
           <p className="text-xs text-muted-foreground">No certificate found in the signature.</p>
         )}
@@ -116,6 +170,7 @@ function Signature({ s, fileSize }: { s: SignatureReport; fileSize: number }) {
               </p>
               {s.timestamp.reason && <p className="text-xs text-muted-foreground">{s.timestamp.reason}</p>}
               {s.timestamp.tsa && <Certificate cert={s.timestamp.tsa} label="Time-stamp authority" />}
+              {s.timestamp.tsa && <Trust trust={s.timestamp.trust} />}
             </div>
           ) : (
             <p className="mt-1 text-xs text-muted-foreground">None embedded. The signing time above is the signer&apos;s own clock and proves nothing about when.</p>
@@ -142,8 +197,12 @@ export default function VerifyPage() {
     setResult(null);
     try {
       const buffer = await file.arrayBuffer();
-      const [verification, metadata] = await Promise.all([verifyPdfSignatures(buffer), inspectSignedPdf(buffer)]);
-      setResult({ fileName: file.name, fileSize: file.size, verification, metadata });
+      const store = await loadTrustStore();
+      const [verification, metadata] = await Promise.all([
+        verifyPdfSignatures(buffer, store ? { anchors: store.anchors } : {}),
+        inspectSignedPdf(buffer),
+      ]);
+      setResult({ fileName: file.name, fileSize: file.size, verification, metadata, store: store?.info ?? null });
     } catch (err) {
       console.error(err);
       toast.error('Could not read this PDF.');
@@ -222,7 +281,9 @@ export default function VerifyPage() {
                 detail={
                   v.modifiedAfterLastSignature
                     ? 'The signed bytes are intact, but data was added to the file after the last signature. Whatever was added is not covered by it.'
-                    : 'The bytes each signature covers are exactly what was signed. Whether to trust the certificate is your call: this page does not validate issuers against a trust store.'
+                    : validSignatures.every((s) => s.trust?.trusted)
+                      ? 'The bytes each signature covers are exactly what was signed, and every certificate chains to a qualified authority on the Spanish trusted list.'
+                      : 'The bytes each signature covers are exactly what was signed. Whether to trust who signed is a separate question: see each certificate below.'
                 }
               />
             ) : (
@@ -263,8 +324,10 @@ export default function VerifyPage() {
 
             <p className="flex items-start gap-2 text-xs text-muted-foreground">
               <KeyRound className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              This verifier checks RSA signatures over SHA-1/256/384/512 and RFC 3161 tokens. It does not validate certificate
-              chains, revocation, or ECDSA/RSA-PSS signatures; those it reports as &quot;cannot check&quot;.
+              This verifier checks RSA signatures over SHA-1/256/384/512 and RFC 3161 tokens, and chains certificates to the
+              qualified authorities on the Spanish trusted list
+              {result.store ? ` (${result.store.anchors} authorities, list ${result.store.tslSequenceNumber} of ${result.store.tslIssued.slice(0, 10)}, fetched ${result.store.retrievedAt.slice(0, 10)})` : ''}.
+              It does not check revocation, and reports ECDSA and RSA-PSS signatures as &quot;cannot check&quot;.
             </p>
           </div>
         )}

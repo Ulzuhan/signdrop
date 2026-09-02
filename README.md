@@ -21,6 +21,10 @@ Uploading confidential contracts, agreements, or NDA documents to third-party el
   - On its own the sheet is a record, not proof: a PDF cannot carry its own hash. Integrity is provable only through the PAdES signature, which covers the sheet too.
 - **Verification Engine (`/verify`)**:
   - Public drag-and-drop page that checks the maths of every PAdES signature in the file — the covered bytes hash to what was signed, the signature verifies with the certificate it carries, the certificate was valid at the claimed time, and whether anything was appended after signing — and of every RFC 3161 token (imprint over the signature, TSA signature). It does **not** validate certificate chains against a trust store, and says so on the page; metadata is shown as what the file claims, never as proof.
+- **Trust store: the Spanish trusted list**:
+  - `/verify` chains every signer and TSA certificate to the qualified authorities on Spain's EU trusted list (`public/trust/es-trusted-list.json`, ~330 issuing authorities: FNMT-RCM, Camerfirma, Firmaprofesional, ACCV, Izenpe, the DNIe's, …), with each service's status. A certificate under a withdrawn service is reported as withdrawn, with the date; a self-signed one as not on the list.
+  - Provenance: the EU LOTL names the Spanish list; the list carries the certificates. `node scripts/update-trust-store.mjs` rebuilds the file and refuses to write unless the FNMT's issuing CA is in it *and* verifies against the FNMT root the FNMT publishes itself. The list is republished roughly every six months; rebuild it then.
+  - The store is fetched by `/verify` on demand (same origin, ~430 KB compressed), never bundled into every page.
 - **Reusable Templates Engine**:
   - Save, manage, export, and import stamp placement configurations (JSON format) across sessions.
 - **DocDrop hand-off**:

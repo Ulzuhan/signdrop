@@ -14,6 +14,8 @@ import { parsePkcs12Bundle } from '../src/lib/pades-signer.ts';
 import { sealPdfDocument } from '../src/lib/pdf-sealer.ts';
 import { buildTimeStampRequest, parseTimeStampResponse } from '../src/lib/tsa-client.ts';
 import { verifyPdfSignatures } from '../src/lib/pades-verifier.ts';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const A = forge.asn1;
 const OID_TST_INFO = '1.2.840.113549.1.9.16.1.4';
@@ -26,7 +28,7 @@ function ok(condition, name) {
   console.log(`   ✓ ${name}`);
 }
 
-function makeCert({ cn, org, keyUsageTimeStamping = false, days = 365 }) {
+function makeCert({ cn, org, keyUsageTimeStamping = false, days = 365, issuer = null, ca = false }) {
   const keys = forge.pki.rsa.generateKeyPair(2048);
   const cert = forge.pki.createCertificate();
   cert.publicKey = keys.publicKey;
@@ -35,12 +37,17 @@ function makeCert({ cn, org, keyUsageTimeStamping = false, days = 365 }) {
   cert.validity.notAfter = new Date(Date.now() + days * 24 * 3600 * 1000);
   const attrs = [{ name: 'commonName', value: cn }, { name: 'organizationName', value: org }, { name: 'countryName', value: 'ES' }];
   cert.setSubject(attrs);
-  cert.setIssuer(attrs);
-  const ext = [{ name: 'basicConstraints', cA: false }];
+  cert.setIssuer(issuer ? issuer.cert.subject.attributes : attrs);
+  const ext = [{ name: 'basicConstraints', cA: ca }, { name: 'keyUsage', digitalSignature: true, keyCertSign: ca, cRLSign: ca }];
   if (keyUsageTimeStamping) ext.push({ name: 'extKeyUsage', timeStamping: true });
   cert.setExtensions(ext);
-  cert.sign(keys.privateKey, forge.md.sha256.create());
+  cert.sign(issuer ? issuer.keys.privateKey : keys.privateKey, forge.md.sha256.create());
   return { cert, keys };
+}
+
+function anchorOf({ cert }, service) {
+  const der = A.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
+  return { sha256: createHash('sha256').update(Buffer.from(der, 'binary')).digest('hex'), pem: forge.pki.certificateToPem(cert), services: [service] };
 }
 
 function makeP12({ cert, keys }, password) {
@@ -205,5 +212,39 @@ const forged = parsePkcs12Bundle(makeP12({ cert: signer.cert, keys: other.keys }
 const forgedDoc = await seal(original, forged, null);
 const v7 = await verifyPdfSignatures(forgedDoc.sealedBytes);
 ok(!v7.signatures[0].valid && /does not verify with the certificate/.test(v7.signatures[0].reason ?? ''), 'rejected: the signature does not verify with the carried certificate');
+
+console.log('8. Trust: a chain to a listed authority');
+const root = makeCert({ cn: 'Test Root', org: 'Raíces SL', ca: true, days: 3650 });
+const issuing = makeCert({ cn: 'Test Issuing CA', org: 'Raíces SL', ca: true, days: 1825, issuer: root });
+const person = makeCert({ cn: 'Persona Cualificada', org: 'Raíces SL', issuer: issuing });
+const trustedP12 = parsePkcs12Bundle(makeP12(person, 'pw'), 'pw');
+trustedP12.caCertificates = [issuing.cert]; // the .p12 carries its chain, as the FNMT's do
+const tsaCa = makeCert({ cn: 'Test TSA', org: 'Relojes SL', keyUsageTimeStamping: true });
+const tsaListed = makeTsa(tsaCa);
+const anchors = [
+  anchorOf(issuing, { provider: 'Raíces SL', tradeName: null, service: 'Qualified certificates issued by Test Issuing CA', type: 'CA/QC', status: 'granted', statusSince: '2020-01-01T00:00:00Z', uses: ['signatures'] }),
+  anchorOf(tsaCa, { provider: 'Relojes SL', tradeName: null, service: 'Qualified timestamps by Test TSA', type: 'TSA/QTST', status: 'granted', statusSince: '2020-01-01T00:00:00Z', uses: [] }),
+];
+const chained = await seal(original, trustedP12, tsaListed);
+const v8 = await verifyPdfSignatures(chained.sealedBytes, { anchors });
+ok(v8.signatures[0].valid, 'the signature verifies');
+ok(v8.signatures[0].trust?.trusted === true, `the certificate chains to the listed issuing CA (${v8.signatures[0].trust?.reason ?? 'ok'})`);
+ok(v8.signatures[0].trust?.service?.provider === 'Raíces SL', 'and the verifier names the provider');
+ok(v8.signatures[0].timestamp?.trust?.trusted === true, 'the time-stamp chains to the listed TSA');
+const v8b = await verifyPdfSignatures(signed.sealedBytes, { anchors });
+ok(v8b.signatures[0].valid && v8b.signatures[0].trust?.trusted === false, 'a self-signed certificate verifies but is not trusted');
+ok(/not on the trusted list/.test(v8b.signatures[0].trust?.reason ?? ''), 'because its issuer is not on the list');
+const withdrawn = [{ ...anchors[0], services: [{ ...anchors[0].services[0], status: 'withdrawn', statusSince: '2024-05-01T00:00:00Z' }] }];
+const v8c = await verifyPdfSignatures(chained.sealedBytes, { anchors: withdrawn });
+ok(v8c.signatures[0].trust?.trusted === false && /withdrawn since 2024-05-01/.test(v8c.signatures[0].trust?.reason ?? ''), 'a withdrawn service is reported as withdrawn, with the date');
+
+console.log('9. The real trust store');
+const store = JSON.parse(readFileSync(new URL('../public/trust/es-trusted-list.json', import.meta.url), 'utf8'));
+ok(store.source.tsl === 'https://tsl.digital.gob.es/TSL.xml' && store.anchors.length > 200, `${store.anchors.length} anchors from the Spanish trusted list (seq ${store.source.tslSequenceNumber})`);
+const acusu = store.anchors.find((a) => a.sha256 === '601293ca20b09a03295d196256c6953ff9eba811db8e3ce140413c1bffe9a869');
+ok(acusu && acusu.services.some((s) => s.type === 'CA/QC' && s.status === 'granted'), 'AC FNMT Usuarios is in it, granted, for qualified certificates');
+ok(store.crossCheck.fnmtUsersCa.verifiesAgainstRoot === true, 'and was cross-checked against the FNMT root the FNMT publishes');
+const loaded = verifyPdfSignatures(signed.sealedBytes, { anchors: store.anchors });
+ok((await loaded).signatures[0].trust?.trusted === false, 'a self-signed signer is not trusted by the real store either');
 
 console.log(`\n✅ ${checks} checks passed.`);
