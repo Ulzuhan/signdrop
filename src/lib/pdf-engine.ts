@@ -63,6 +63,13 @@ export async function renderPdfPage(
   };
 }
 
+/**
+ * What the PDF says about itself in its metadata: SignDrop's keywords, the
+ * hash of the original it claims, the seal id. None of it is proof of
+ * anything — metadata is written by whoever holds the file — and the
+ * verification page says so. Proof comes from the PAdES signature
+ * (pades-verifier.ts).
+ */
 export async function inspectSignedPdf(arrayBuffer: ArrayBuffer) {
   const { PDFDocument } = await import('pdf-lib');
   const { calculateSha256 } = await import('./crypto');
@@ -72,7 +79,6 @@ export async function inspectSignedPdf(arrayBuffer: ArrayBuffer) {
   let sealId = '';
   let timestamp = '';
   let hasAuditSeal = false;
-  let signerName = 'Unknown';
   let title = '';
 
   try {
@@ -98,14 +104,13 @@ export async function inspectSignedPdf(arrayBuffer: ArrayBuffer) {
   }
 
   return {
+    /** SignDrop metadata is present. Says nothing about integrity. */
     hasAuditSeal,
-    isValid: hasAuditSeal && Boolean(originalHash),
-    isTampered: false,
     documentName: title.replace('Signed - ', '') || 'document.pdf',
-    originalHash: originalHash || computedHash,
+    /** The original-document hash the metadata claims; empty when absent. */
+    claimedOriginalHash: originalHash,
     computedHash,
     sealId,
-    timestamp,
-    signerName,
+    claimedTimestamp: timestamp,
   };
 }

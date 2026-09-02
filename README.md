@@ -14,17 +14,17 @@ Uploading confidential contracts, agreements, or NDA documents to third-party el
 - **PAdES Advanced Electronic Signatures (X.509 PKI)**:
   - Local loading and unlock of `.p12` / `.pfx` digital certificates and private keys entirely in WebAssembly / JS memory.
   - Generates ISO 32000-1 / ETSI EN 319 142 `/ByteRange` detached CMS PKCS#7 digital signatures, natively recognized by **Adobe Acrobat Reader** (*"Signed and all signatures are valid"*).
-- **Qualified Time Stamping (RFC 3161 TSA)**:
-  - Zero-knowledge time stamping: only the 32-byte SHA-256 digest is transmitted to public or corporate Time Stamping Authorities (FreeTSA / DigiCert / FNMT).
-- **Integrity Seal & Audit Trail**:
-  - Calculates a SHA-256 cryptographic digest of the original and signed documents.
-  - Generates a tamper-evident audit certificate sheet appended to the PDF with verification QR code.
+- **Time Stamping (RFC 3161 TSA)**:
+  - Only a 32-byte SHA-256 digest is sent to the Time Stamping Authority, through this instance's `/api/tsa` proxy. The token comes back and is **embedded in the PAdES signature** as the signature-time-stamp attribute (PAdES-B-T), where `/verify` reads the certified time from. A time-stamp needs a certificate signature to live in; without a `.p12`, none is requested.
+- **Audit Trail**:
+  - Records the SHA-256 of the original document and appends an audit sheet with a QR to this instance's `/verify` page.
+  - On its own the sheet is a record, not proof: a PDF cannot carry its own hash. Integrity is provable only through the PAdES signature, which covers the sheet too.
 - **Verification Engine (`/verify`)**:
-  - Public drag-and-drop screen to inspect any signed PDF, extract seal metadata, and validate document integrity in real time.
+  - Public drag-and-drop page that checks the maths of every PAdES signature in the file — the covered bytes hash to what was signed, the signature verifies with the certificate it carries, the certificate was valid at the claimed time, and whether anything was appended after signing — and of every RFC 3161 token (imprint over the signature, TSA signature). It does **not** validate certificate chains against a trust store, and says so on the page; metadata is shown as what the file claims, never as proof.
 - **Reusable Templates Engine**:
   - Save, manage, export, and import stamp placement configurations (JSON format) across sessions.
-- **DocDrop Integration**:
-  - One-click dispatch of signed PDFs to **DocDrop** for end-to-end encrypted transfer.
+- **DocDrop hand-off**:
+  - A link to a DocDrop instance for sending the signed PDF encrypted end-to-end (shown only when `SIGNDROP_DOCDROP_URL` is set).
 
 ---
 
@@ -37,9 +37,9 @@ Uploading confidential contracts, agreements, or NDA documents to third-party el
 - **Document Annotations**: Place text fields, dates, checkboxes, and initials across any page.
 - **Multi-page Support**: Page thumbnails sidebar, adaptive zoom, drag-and-drop overlays, and resize handles.
 - **Digital Certificates**: Full support for `.p12` / `.pfx` files for advanced PAdES signing.
-- **Official RFC 3161 Time-Stamps**: Real-time certified timestamps from TSA authorities.
+- **RFC 3161 Time-Stamps**: embedded in the signature, verifiable on `/verify`.
 - **Template Store**: Reusable field templates with JSON import / export.
-- **PDF Verification Tool (`/verify`)**: Fast inspection screen to check hash integrity and certificate authenticity.
+- **PDF Verification Tool (`/verify`)**: checks signatures and time-stamps in the browser; honest about what it cannot check.
 
 ---
 

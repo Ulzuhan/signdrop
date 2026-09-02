@@ -91,7 +91,6 @@ async function runAdvancedTestSuite() {
       stampsCount: 1,
     },
     p12Data: parsed,
-    tsaTimestamp: '2026-09-02 12:00:00 UTC',
   });
 
   assert.equal(sealResult.isPadesSigned, true, 'isPadesSigned must be true');

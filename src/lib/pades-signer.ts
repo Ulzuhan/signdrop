@@ -5,6 +5,7 @@
 import forge from 'node-forge';
 import { PDFDocument, PDFName, PDFDict, PDFArray, PDFHexString, PDFNumber, PDFString } from 'pdf-lib';
 import { DigitalCertificateInfo } from './pades-types';
+import { signatureTimeStampAttribute } from './pades-verifier';
 
 export interface ParsedPkcs12 {
   cert: forge.pki.Certificate;
@@ -111,16 +112,27 @@ export interface PadesSignOptions {
   reason?: string;
   location?: string;
   contactInfo?: string;
+  /**
+   * Asked for an RFC 3161 token over the signature value, once it exists.
+   * What it returns is embedded in the signature as the unsigned attribute
+   * PAdES-B-T requires (signature-time-stamp). Returning null signs without
+   * one; throwing aborts the signature, because a document that claims a
+   * time-stamp it does not carry is worse than one that says it has none.
+   */
+  timestamp?: (signatureValue: Uint8Array) => Promise<Uint8Array | null>;
 }
 
-const SIGNATURE_HEX_LENGTH = 8192 * 2; // 8192 bytes = 16384 hex characters
+// 24 KiB of hex for the CMS. A signer certificate with its chain is 2-4 KB
+// and a TSA token with the TSA's chain another 4-8 KB; the old 8 KiB budget
+// had no room for the token.
+const SIGNATURE_HEX_LENGTH = 24576 * 2;
 const BYTE_RANGE_PLACEHOLDER = '0000000000 0000000000 0000000000 0000000000';
 
 /**
  * Embeds a cryptographic PAdES PKCS#7 detached signature into the PDF structure.
  */
 export async function signPdfWithPades(options: PadesSignOptions): Promise<Uint8Array> {
-  const { pdfBytes, p12Data, reason = 'Documento sellado y firmado digitalmente con SignDrop', location = 'Client Browser', contactInfo } = options;
+  const { pdfBytes, p12Data, reason = 'Documento sellado y firmado digitalmente con SignDrop', location = 'Client Browser', contactInfo, timestamp } = options;
 
   const inputBytes = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
   const pdfDoc = await PDFDocument.load(inputBytes, { ignoreEncryption: true });
@@ -184,9 +196,20 @@ export async function signPdfWithPades(options: PadesSignOptions): Promise<Uint8
   const savedPdfBytes = await pdfDoc.save({ useObjectStreams: false });
   const pdfString = forge.util.createBuffer(savedPdfBytes as unknown as forge.util.ArrayBufferView).getBytes();
 
-  // Locate ByteRange and Contents in raw binary string
-  const contentsIndex = pdfString.indexOf('/Contents <');
-  if (contentsIndex === -1) {
+  // Locate OUR signature dictionary, not the first one in the file: a PDF that
+  // already carried a signature has its own /Contents earlier. The placeholder
+  // ByteRange written above is unique to this run.
+  const placeholderIndex = pdfString.indexOf('1000000000 1000000000 1000000000');
+  if (placeholderIndex === -1) {
+    throw new Error('No se encontró el placeholder /ByteRange en la estructura del PDF');
+  }
+  const dictStart = pdfString.lastIndexOf('<<', placeholderIndex);
+  const dictEnd = pdfString.indexOf('>>', placeholderIndex);
+  let contentsIndex = pdfString.indexOf('/Contents <', dictStart);
+  if (contentsIndex === -1 || contentsIndex > dictEnd) {
+    contentsIndex = pdfString.lastIndexOf('/Contents <', placeholderIndex);
+  }
+  if (contentsIndex < dictStart || contentsIndex === -1) {
     throw new Error('No se encontró el placeholder /Contents en la estructura del PDF');
   }
 
@@ -202,7 +225,7 @@ export async function signPdfWithPades(options: PadesSignOptions): Promise<Uint8
   const length2 = savedPdfBytes.length - offset2;
 
   const actualByteRange = `/ByteRange [${offset1} ${length1} ${offset2} ${length2}]`;
-  const byteRangeIndex = pdfString.indexOf('/ByteRange [');
+  const byteRangeIndex = pdfString.lastIndexOf('/ByteRange [', placeholderIndex);
   const byteRangeEndIndex = pdfString.indexOf(']', byteRangeIndex) + 1;
   const oldByteRange = pdfString.substring(byteRangeIndex, byteRangeEndIndex);
 
@@ -224,14 +247,18 @@ export async function signPdfWithPades(options: PadesSignOptions): Promise<Uint8
   const range1 = preparedBytes.subarray(offset1, offset1 + length1);
   const range2 = preparedBytes.subarray(offset2, offset2 + length2);
 
-  const md = forge.md.sha256.create();
-  md.update(forge.util.createBuffer(range1 as unknown as forge.util.ArrayBufferView).getBytes());
-  md.update(forge.util.createBuffer(range2 as unknown as forge.util.ArrayBufferView).getBytes());
-  const docDigest = md.digest().getBytes();
+  // The covered bytes ARE the content forge signs, in detached mode: forge
+  // computes the messageDigest attribute itself from `content`, and ignores
+  // any value handed to it. The previous version handed it the digest and
+  // left `content` empty, so every signature carried the digest of nothing —
+  // which no verifier, ours included, would ever accept.
+  const covered = forge.util.createBuffer();
+  covered.putBytes(forge.util.binary.raw.encode(range1));
+  covered.putBytes(forge.util.binary.raw.encode(range2));
 
   // Build CMS / PKCS#7 signedData
   const p7 = forge.pkcs7.createSignedData();
-  p7.content = forge.util.createBuffer();
+  p7.content = covered;
   p7.addCertificate(p12Data.cert);
   for (const caCert of p12Data.caCertificates) {
     p7.addCertificate(caCert);
@@ -247,8 +274,8 @@ export async function signPdfWithPades(options: PadesSignOptions): Promise<Uint8
         value: forge.pki.oids.data,
       },
       {
+        // Filled in by forge with the digest of `content`.
         type: forge.pki.oids.messageDigest,
-        value: docDigest,
       },
       {
         type: forge.pki.oids.signingTime,
@@ -260,6 +287,27 @@ export async function signPdfWithPades(options: PadesSignOptions): Promise<Uint8
   // Generate detached signature
   p7.sign({ detached: true });
   const rawSignatureAsn1 = p7.toAsn1();
+
+  // PAdES-B-T: the time-stamp token goes in as an unsigned attribute of the
+  // SignerInfo, imprinting the signature value. It is added to the ASN.1 tree
+  // after signing, which is exactly why it is *unsigned*.
+  if (timestamp) {
+    const signatureBinary = (p7 as unknown as { signers: Array<{ signature: string }> }).signers[0].signature;
+    const signatureValue = new Uint8Array(signatureBinary.length);
+    for (let i = 0; i < signatureBinary.length; i++) signatureValue[i] = signatureBinary.charCodeAt(i);
+    const tokenDer = await timestamp(signatureValue);
+    if (tokenDer) {
+      const signedData = (rawSignatureAsn1.value as forge.asn1.Asn1[])[1].value as forge.asn1.Asn1[];
+      const signerInfos = (signedData[0].value as forge.asn1.Asn1[]).slice(-1)[0];
+      const signerInfo = (signerInfos.value as forge.asn1.Asn1[])[0];
+      (signerInfo.value as forge.asn1.Asn1[]).push(
+        forge.asn1.create(forge.asn1.Class.CONTEXT_SPECIFIC, 1, true, [
+          signatureTimeStampAttribute(forge.util.binary.raw.encode(tokenDer)),
+        ])
+      );
+    }
+  }
+
   const rawSignatureDer = forge.asn1.toDer(rawSignatureAsn1).getBytes();
   const signatureHex = forge.util.bytesToHex(rawSignatureDer);
 

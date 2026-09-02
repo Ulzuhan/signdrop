@@ -29,7 +29,8 @@ export interface SealPdfOptions {
   includeAuditSheet?: boolean;
   auditData: AuditTrailData;
   p12Data?: ParsedPkcs12 | null;
-  tsaTimestamp?: string | null;
+  /** RFC 3161 token provider; only meaningful with a certificate (it goes inside the signature). */
+  timestamp?: (signatureValue: Uint8Array) => Promise<Uint8Array | null>;
 }
 
 export async function sealPdfDocument(options: SealPdfOptions): Promise<{
@@ -45,7 +46,7 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     includeAuditSheet = true,
     auditData,
     p12Data,
-    tsaTimestamp,
+    timestamp,
   } = options;
 
   // Calculate original SHA-256
@@ -225,9 +226,11 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     drawField('Document Name:', auditData.documentName || 'document.pdf');
     drawField('Total Pages Signed:', `${pages.length} page(s)`);
     drawField('Visual Stamps Placed:', `${stamps.length} stamp(s)`);
-    drawField('Signing Timestamp:', `${auditData.timestamp} UTC`);
-    if (tsaTimestamp) {
-      drawField('TSA Certified Time:', `${tsaTimestamp} (RFC 3161 FreeTSA)`);
+    drawField('Signing time (signer\'s clock):', `${auditData.timestamp} UTC`);
+    if (p12Data && timestamp) {
+      // The certified time lives inside the signature, where a verifier
+      // reads it; printing a clock here would be printing a claim.
+      drawField('RFC 3161 time-stamp:', 'embedded in the PAdES signature (PAdES-B-T)');
     }
 
     cursorY -= 6;
@@ -250,8 +253,12 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     drawField('Original Document SHA-256:', auditData.originalHash, true);
 
     // QR Code for verification
-    const verificationUrl = auditData.verificationUrl || `https://sign.kaicorplabs.com/verify?seal=${auditData.signerId}&hash=${originalHash}`;
-    try {
+    // No default: an instance that does not say where it verifies gets no
+    // QR pointing at somebody else's.
+    const verificationUrl = auditData.verificationUrl
+      ? `${auditData.verificationUrl}${auditData.verificationUrl.includes('?') ? '&' : '?'}seal=${encodeURIComponent(auditData.signerId)}`
+      : null;
+    if (verificationUrl) try {
       const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
         margin: 1,
         width: 140,
@@ -329,7 +336,7 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     `OriginalSHA256:${originalHash}`,
     `SealID:${auditData.signerId}`,
     `Timestamp:${auditData.timestamp}`,
-    p12Data ? 'PAdES-B-B' : 'SES',
+    p12Data ? (timestamp ? 'PAdES-B-T' : 'PAdES-B-B') : 'SES',
   ]);
 
   // Save the modified PDF with visual stamps
@@ -343,10 +350,14 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
         pdfBytes: sealedBytes,
         p12Data,
         reason: `Firmado digitalmente con PAdES por ${p12Data.info.commonName}`,
+        timestamp,
       });
       isPadesSigned = true;
     } catch (padesErr) {
-      console.error('PAdES digital signing failed:', padesErr);
+      // A certificate was given and the signature failed: say it. Returning a
+      // merely stamped PDF as if it were signed is the kind of quiet downgrade
+      // this tool exists to avoid.
+      throw padesErr instanceof Error ? padesErr : new Error('PAdES digital signing failed');
     }
   }
 

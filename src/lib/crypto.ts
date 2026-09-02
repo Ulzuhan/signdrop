@@ -28,7 +28,8 @@ export function formatShortHash(hash: string, startChars = 8, endChars = 8): str
 }
 
 export function generateRandomId(prefix = 'sig'): string {
-  const random = Math.random().toString(36).substring(2, 10);
-  const time = Date.now().toString(36).slice(-4);
-  return `${prefix}_${time}${random}`;
+  // A seal id is printed on the audit sheet and looked up by verifiers: it
+  // comes from the CSPRNG, not from Math.random().
+  const uuid = globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}_${uuid.replace(/-/g, '').slice(0, 20)}`;
 }

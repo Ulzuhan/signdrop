@@ -22,6 +22,7 @@ import { loadPdfDocument, renderPdfPage } from '@/lib/pdf-engine';
 import { sealPdfDocument } from '@/lib/pdf-sealer';
 import { generateRandomId } from '@/lib/crypto';
 import { requestTsaTimestamp } from '@/lib/tsa-client';
+import { calculateSha256 } from '@/lib/crypto';
 import { ParsedPkcs12 } from '@/lib/pades-signer';
 import { StampItemOverlay } from './stamp-item';
 import { SignatureModal } from './signature-modal';
@@ -188,24 +189,37 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
   }) => {
     setIsSealing(true);
     try {
-      let tsaTimestampStr: string | null = null;
-      if (useTsaTimestamp) {
-        try {
-          const tsaRes = await requestTsaTimestamp(documentInfo.originalHash);
-          tsaTimestampStr = tsaRes.timestamp.replace('T', ' ').substring(0, 19);
-        } catch (tsaErr) {
-          console.warn('TSA request fallback to local timestamp:', tsaErr);
-        }
-      }
+      // The RFC 3161 token imprints the SIGNATURE, so it can only be asked
+      // for once the signature exists: the signer calls this back with the
+      // signature value and embeds what comes back. Without a certificate
+      // there is no signature to carry it, so it is not requested at all.
+      const stamped: { genTime: string | null } = { genTime: null };
+      const timestamp =
+        useTsaTimestamp && activeCertificate
+          ? async (signatureValue: Uint8Array) => {
+              try {
+                const token = await requestTsaTimestamp(await calculateSha256(signatureValue));
+                stamped.genTime = token.genTime;
+                return token.tokenDer;
+              } catch (tsaErr) {
+                console.warn('TSA unavailable; signing without a time-stamp:', tsaErr);
+                toast.warning('La TSA no respondió: el documento se firma sin sello de tiempo.');
+                return null;
+              }
+            }
+          : undefined;
 
       const auditData: AuditTrailData = {
         documentName: documentInfo.fileName,
         originalHash: documentInfo.originalHash,
-        timestamp: tsaTimestampStr || new Date().toISOString().replace('T', ' ').substring(0, 19),
+        // The signer's own clock, labelled as such on the sheet. The certified
+        // time, when there is one, lives inside the signature.
+        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
         signerName: activeCertificate?.info.commonName || signerName || 'Usuario Local',
         signerEmail: signerEmail,
         signerId: generateRandomId('seal'),
         stampsCount: stamps.length,
+        verificationUrl: `${window.location.origin}/verify`,
       };
 
       const result = await sealPdfDocument({
@@ -215,7 +229,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         includeAuditSheet,
         auditData,
         p12Data: activeCertificate,
-        tsaTimestamp: tsaTimestampStr,
+        timestamp,
       });
 
       const blob = new Blob([result.sealedBytes as BlobPart], { type: 'application/pdf' });
@@ -224,13 +238,17 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
       setSealedHash(result.sealedHash);
 
       if (result.isPadesSigned) {
-        toast.success('Documento firmado digitalmente con PAdES (X.509).');
+        toast.success(
+          stamped.genTime
+            ? `Firmado con PAdES y sello de tiempo certificado (${stamped.genTime.replace('T', ' ').slice(0, 19)} UTC).`
+            : 'Documento firmado digitalmente con PAdES (X.509).'
+        );
       } else {
-        toast.success('Documento sellado criptográficamente.');
+        toast.success('Documento estampado. Sin certificado no hay firma verificable.');
       }
     } catch (err) {
       console.error('Error during sealing:', err);
-      toast.error('Error al sellar el PDF.');
+      toast.error(err instanceof Error && err.message ? `No se pudo firmar: ${err.message}` : 'Error al sellar el PDF.');
     } finally {
       setIsSealing(false);
     }

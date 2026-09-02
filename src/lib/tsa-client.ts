@@ -1,120 +1,97 @@
 /**
- * RFC 3161 Time Stamping Client using ASN.1 DER encoding.
- * 100% Zero-Knowledge: Only the 32-byte SHA-256 digest is transmitted to the TSA.
+ * RFC 3161 time-stamping, browser side.
+ *
+ * The request carries only a digest, never the document. The reply is a
+ * TimeStampToken: a CMS SignedData whose content is a TSTInfo with the TSA's
+ * own clock (genTime) and the imprint it certified. The token is what gets
+ * embedded in the PAdES signature as an unsigned attribute — the earlier
+ * version fetched it and then wrote the local clock into the audit sheet,
+ * which certified nothing.
  */
 import forge from 'node-forge';
-import { TsaTimestampResult } from './pades-types';
+import { parseTimeStampToken } from './pades-verifier';
 
 const OID_SHA256 = '2.16.840.1.101.3.4.2.1';
 
-/**
- * Encodes an RFC 3161 TimeStampReq in binary ASN.1 DER.
- */
+export interface TimeStampResult {
+  /** The token as DER, ready to embed. */
+  tokenDer: Uint8Array;
+  tokenBytesBase64: string;
+  /** What the TSA certified, read from the token itself. */
+  genTime: string | null;
+  serialNumber: string;
+  policy: string;
+}
+
+function toUint8(binary: string): Uint8Array {
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+  return out;
+}
+
+/** Encodes an RFC 3161 TimeStampReq (DER) for a SHA-256 imprint. */
 export function buildTimeStampRequest(sha256Hex: string): Uint8Array {
   const digestBytes = forge.util.hexToBytes(sha256Hex);
-  const nonceBytes = forge.random.getBytesSync(8);
-  const nonceHex = forge.util.bytesToHex(nonceBytes);
+  const nonceHex = forge.util.bytesToHex(forge.random.getBytesSync(8));
+  const A = forge.asn1;
 
-  // TimeStampReq ::= SEQUENCE  {
-  //    version               INTEGER  { v1(1) },
-  //    messageImprint        MessageImprint,
-  //    reqPolicy             TSAPolicyId              OPTIONAL,
-  //    nonce                 INTEGER                  OPTIONAL,
-  //    certReq               BOOLEAN                  DEFAULT FALSE,
-  //    extensions            [0] IMPLICIT Extensions  OPTIONAL  }
-  const messageImprint = forge.asn1.create(
-    forge.asn1.Class.UNIVERSAL,
-    forge.asn1.Type.SEQUENCE,
-    true,
-    [
-      // AlgorithmIdentifier (SHA-256)
-      forge.asn1.create(
-        forge.asn1.Class.UNIVERSAL,
-        forge.asn1.Type.SEQUENCE,
-        true,
-        [
-          forge.asn1.create(
-            forge.asn1.Class.UNIVERSAL,
-            forge.asn1.Type.OID,
-            false,
-            forge.asn1.oidToDer(OID_SHA256).getBytes()
-          ),
-          forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.NULL, false, ''),
-        ]
-      ),
-      // HashedMessage (OCTET STRING)
-      forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.OCTETSTRING, false, digestBytes),
-    ]
-  );
+  const messageImprint = A.create(A.Class.UNIVERSAL, A.Type.SEQUENCE, true, [
+    A.create(A.Class.UNIVERSAL, A.Type.SEQUENCE, true, [
+      A.create(A.Class.UNIVERSAL, A.Type.OID, false, A.oidToDer(OID_SHA256).getBytes()),
+      A.create(A.Class.UNIVERSAL, A.Type.NULL, false, ''),
+    ]),
+    A.create(A.Class.UNIVERSAL, A.Type.OCTETSTRING, false, digestBytes),
+  ]);
 
-  const reqSeq = forge.asn1.create(
-    forge.asn1.Class.UNIVERSAL,
-    forge.asn1.Type.SEQUENCE,
-    true,
-    [
-      // version = 1
-      forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.INTEGER, false, forge.util.hexToBytes('01')),
-      messageImprint,
-      // nonce
-      forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.INTEGER, false, forge.util.hexToBytes(nonceHex)),
-      // certReq = TRUE
-      forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.BOOLEAN, false, forge.util.hexToBytes('FF')),
-    ]
-  );
+  const req = A.create(A.Class.UNIVERSAL, A.Type.SEQUENCE, true, [
+    A.create(A.Class.UNIVERSAL, A.Type.INTEGER, false, forge.util.hexToBytes('01')),
+    messageImprint,
+    A.create(A.Class.UNIVERSAL, A.Type.INTEGER, false, forge.util.hexToBytes(nonceHex)),
+    A.create(A.Class.UNIVERSAL, A.Type.BOOLEAN, false, forge.util.hexToBytes('FF')),
+  ]);
 
-  const derStr = forge.asn1.toDer(reqSeq).getBytes();
-  const derBytes = new Uint8Array(derStr.length);
-  for (let i = 0; i < derStr.length; i++) {
-    derBytes[i] = derStr.charCodeAt(i);
-  }
-  return derBytes;
+  return toUint8(A.toDer(req).getBytes());
 }
 
 /**
- * Requests an official RFC 3161 Time-Stamp Token via /api/tsa proxy.
+ * Reads a TimeStampResp. Throws when the TSA refused or the reply is not a
+ * token; the caller decides whether signing goes on without a time-stamp.
  */
-export async function requestTsaTimestamp(sha256Hex: string): Promise<TsaTimestampResult> {
-  const reqBytes = buildTimeStampRequest(sha256Hex);
+export function parseTimeStampResponse(reply: Uint8Array): TimeStampResult {
+  const A = forge.asn1;
+  const resp = A.fromDer(forge.util.binary.raw.encode(reply), false);
+  const parts = Array.isArray(resp.value) ? (resp.value as forge.asn1.Asn1[]) : [];
+  if (parts.length < 1) throw new Error('The TSA reply is not a TimeStampResp');
 
+  // PKIStatusInfo ::= SEQUENCE { status INTEGER, ... }; 0 granted, 1 grantedWithMods.
+  const statusInfo = Array.isArray(parts[0].value) ? (parts[0].value as forge.asn1.Asn1[]) : [];
+  const status = statusInfo[0] ? A.derToInteger(statusInfo[0].value as string) : -1;
+  if (status !== 0 && status !== 1) {
+    throw new Error(`The TSA refused the request (status ${status})`);
+  }
+  if (parts.length < 2) throw new Error('The TSA granted the request but sent no token');
+
+  const token = parts[1];
+  const { tstInfo } = parseTimeStampToken(token);
+  const tokenDerBinary = A.toDer(token).getBytes();
+  return {
+    tokenDer: toUint8(tokenDerBinary),
+    tokenBytesBase64: forge.util.encode64(tokenDerBinary),
+    genTime: tstInfo.genTime ? tstInfo.genTime.toISOString() : null,
+    serialNumber: tstInfo.serialNumber,
+    policy: tstInfo.policy,
+  };
+}
+
+/** Requests a token for a SHA-256 imprint through this instance's /api/tsa proxy. */
+export async function requestTsaTimestamp(sha256Hex: string): Promise<TimeStampResult> {
   const response = await fetch('/api/tsa', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/timestamp-query',
-    },
-    body: reqBytes as unknown as BodyInit,
+    headers: { 'Content-Type': 'application/timestamp-query' },
+    body: buildTimeStampRequest(sha256Hex) as unknown as BodyInit,
   });
-
   if (!response.ok) {
-    throw new Error(`El servidor TSA respondió con estado ${response.status}`);
+    throw new Error(`The time-stamp service answered ${response.status}`);
   }
-
-  const resBuffer = await response.arrayBuffer();
-  const resBytes = new Uint8Array(resBuffer);
-  const binaryStr = forge.util.createBuffer(resBytes as unknown as forge.util.ArrayBufferView).getBytes();
-  const asn1 = forge.asn1.fromDer(binaryStr);
-
-  // TimeStampResp ::= SEQUENCE  {
-  //    status                  PKIStatusInfo,
-  //    timeStampToken          TimeStampToken     OPTIONAL  }
-  if (!asn1.value || !Array.isArray(asn1.value) || asn1.value.length < 2) {
-    throw new Error('Respuesta ASN.1 del TSA no válida');
-  }
-
-  const pkiStatusInfo = asn1.value[0];
-  const statusCode = (pkiStatusInfo.value as any[])?.[0]?.value?.charCodeAt?.(0) ?? 0;
-
-  if (statusCode !== 0 && statusCode !== 1) {
-    throw new Error(`TSA rechazó la solicitud de sello de tiempo (código de estado: ${statusCode})`);
-  }
-
-  const timeStampToken = asn1.value[1];
-  const tokenDer = forge.asn1.toDer(timeStampToken).getBytes();
-  const tokenBase64 = forge.util.encode64(tokenDer);
-
-  return {
-    tsaName: 'FreeTSA / RFC 3161 Authority',
-    timestamp: new Date().toISOString(),
-    tokenBytesBase64: tokenBase64,
-    status: 'granted',
-  };
+  return parseTimeStampResponse(new Uint8Array(await response.arrayBuffer()));
 }

@@ -104,12 +104,12 @@ async function runTests() {
   console.log('3. Inspecting signed PDF with verification engine...');
   const inspection = await inspectSignedPdf(sealResult.sealedBytes);
   console.log(`   ✓ Has Audit Seal: ${inspection.hasAuditSeal}`);
-  console.log(`   ✓ Extracted Original SHA-256: ${inspection.originalHash}`);
+  console.log(`   ✓ Claimed Original SHA-256: ${inspection.claimedOriginalHash}`);
   console.log(`   ✓ Extracted Seal ID: ${inspection.sealId}`);
   console.log(`   ✓ Computed Hash: ${inspection.computedHash}`);
 
   assert.equal(inspection.hasAuditSeal, true, 'Sealed PDF must contain SignDrop audit seal metadata');
-  assert.equal(inspection.originalHash, originalHash, 'Verification engine must recover the original SHA-256 hash');
+  assert.equal(inspection.claimedOriginalHash, originalHash, 'Metadata inspection must recover the claimed original SHA-256 hash');
   assert.equal(inspection.sealId, 'seal_test_998877', 'Seal ID must match');
   assert.equal(inspection.computedHash, sealResult.sealedHash, 'Computed hash must match sealed output hash');
 

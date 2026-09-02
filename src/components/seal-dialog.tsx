@@ -191,17 +191,20 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
-                    checked={useTsaTimestamp}
+                    checked={useTsaTimestamp && Boolean(p12Data)}
+                    disabled={!p12Data}
                     onChange={(e) => setUseTsaTimestamp(e.target.checked)}
-                    className="mt-0.5 rounded accent-primary"
+                    className="mt-0.5 rounded accent-primary disabled:opacity-40"
                   />
                   <div>
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Clock className="size-3 text-primary" />
-                      Sellado de Tiempo Cualificado TSA (RFC 3161)
+                      Sello de tiempo RFC 3161
                     </span>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      Solicita un timestamp oficial a FreeTSA (zero-knowledge: solo se envía el hash de 32 bytes).
+                      {p12Data
+                        ? 'Va dentro de la firma PAdES: solo se envía a la TSA el hash de la firma, y /verify lee la hora certificada.'
+                        : 'Necesita un certificado: el sello de tiempo vive dentro de la firma PAdES.'}
                     </p>
                   </div>
                 </label>
