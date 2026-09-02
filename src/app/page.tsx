@@ -1,92 +1,75 @@
-'use client';
+import Link from 'next/link';
+import { FileSearch, KeyRound, Lock, ShieldCheck } from 'lucide-react';
+import { Workspace } from '@/components/workspace';
+import { getSession } from '@/lib/auth/session';
+import { currentGuest } from '@/lib/auth/guest';
+import { oidcConfigured } from '@/lib/auth/oidc';
 
-import React, { useState } from 'react';
-import { PdfUploader } from '@/components/pdf-uploader';
-import { PdfViewer } from '@/components/pdf-viewer';
-import { PdfDocumentInfo } from '@/lib/types';
-import { Shield, Sparkles, Cpu, Lock, CheckCircle2 } from 'lucide-react';
+/**
+ * The door.
+ *
+ * Signing needs an account or a guest link somebody with one handed out;
+ * verifying needs nothing at all, and never will. That asymmetry is the
+ * product: whoever receives a signed contract must be able to check it
+ * without registering anywhere, and whoever is asked to sign one must be able
+ * to do it without being enrolled in a service they did not choose.
+ *
+ * Everything past this point runs in the visitor's browser. The gate is about
+ * who may spend this deployment's time-stamp quota and see its workspace, not
+ * about who may see a document — the server never has one.
+ */
+export default async function HomePage() {
+  const [session, guest] = await Promise.all([getSession(), currentGuest()]);
+  if (session || guest) return <Workspace />;
 
-export default function HomePage() {
-  const [loadedDoc, setLoadedDoc] = useState<{
-    arrayBuffer: ArrayBuffer;
-    info: PdfDocumentInfo;
-  } | null>(null);
-
-  // No configuration, no button. This is an MIT repository and a default
-  // pointing at our own DocDrop would ship our infrastructure to everyone who
-  // clones it.
-  const docDropUrl = process.env.NEXT_PUBLIC_SIGNDROP_DOCDROP_URL?.trim() || undefined;
-
-  if (loadedDoc) {
-    return (
-      <PdfViewer
-        arrayBuffer={loadedDoc.arrayBuffer}
-        documentInfo={loadedDoc.info}
-        onReset={() => setLoadedDoc(null)}
-        docDropUrl={docDropUrl}
-      />
-    );
-  }
+  const canSignIn = oidcConfigured();
+  const enrollUrl = process.env.SIGNDROP_ENROLL_URL?.trim();
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6">
-      {/* Hero Title & Description */}
-      <div className="mx-auto max-w-3xl text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-semibold text-primary shadow-sm" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
-          <Sparkles className="size-3.5" />
-          Firma de PDFs Zero-Knowledge en tu navegador
+    <main className="kc-product-landing flex flex-1 flex-col items-center justify-center px-4 py-16 sm:px-6">
+      <div className="mx-auto max-w-2xl text-center">
+        <div className="sd-eyebrow">
+          <Lock className="size-3.5" aria-hidden />
+          Nothing is uploaded. Not the document, not the certificate.
         </div>
 
-        <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl" style={{ fontFamily: 'var(--kc-font-display)' }}>
-          Firma y sella contratos sin exponer tus documentos
-        </h1>
+        <h1 className="sd-landing-title">Sign a PDF where it already is</h1>
 
-        <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-          Subir acuerdos confidenciales o NDAs a plataformas SaaS de terceros expone tus datos.
-          Con <strong>SignDrop</strong>, la modificación, estampado visual y sellado SHA-256 se ejecutan <strong>100% en la memoria de tu navegador</strong>.
+        <p className="sd-landing-lede">
+          SignDrop stamps, seals and signs PDFs in the browser. The PAdES signature is the real thing — Acrobat validates
+          it, the certificate is checked against the qualified authorities of the EU trusted lists, and a second
+          signature does not break the first.
         </p>
-      </div>
 
-      {/* Uploader Box */}
-      <PdfUploader onDocumentLoaded={(doc) => setLoadedDoc(doc)} />
-
-      {/* Features Grid */}
-      <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-3">
-        <div className="rounded-2xl border p-6" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Lock className="size-5" />
-          </div>
-          <h3 className="mt-4 text-sm font-bold text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
-            Privacidad Cero-Servidor
-          </h3>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            El archivo PDF nunca sale de tu equipo. Ni tu firma ni el contenido del documento se envían a ningún servidor remoto.
-          </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          {canSignIn && (
+            <a href="/api/auth/login" className="sd-primary-button">
+              <KeyRound className="size-4" aria-hidden />
+              Sign in to sign
+            </a>
+          )}
+          <Link href="/verify" className="sd-ghost-button sd-ghost-button--large">
+            <FileSearch className="size-4" aria-hidden />
+            Check a signature
+          </Link>
         </div>
 
-        <div className="rounded-2xl border p-6" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-            <Shield className="size-5" />
-          </div>
-          <h3 className="mt-4 text-sm font-bold text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
-            Sello Criptográfico SHA-256
-          </h3>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Genera un certificado de auditoría con huellas criptográficas antes y después de la firma, inalterable y verificable.
-          </p>
-        </div>
-
-        <div className="rounded-2xl border p-6" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
-          <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
-            <Cpu className="size-5" />
-          </div>
-          <h3 className="mt-4 text-sm font-bold text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
-            Múltiples Modos de Firma
-          </h3>
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Dibuja en vector suave, escribe con tipografía caligráfica o sube tu firma escaneada con eliminación de fondo transparente.
-          </p>
-        </div>
+        <p className="sd-landing-note">
+          <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
+          <span>
+            Checking a signature needs no account and never will. Signing needs one — or an invitation from somebody who
+            has one, which is how the other side of a contract signs it without joining anything.
+            {enrollUrl ? (
+              <>
+                {' '}
+                <a href={enrollUrl} target="_blank" rel="noopener noreferrer" className="sd-inline-link">
+                  Ask for an account
+                </a>
+                .
+              </>
+            ) : null}
+          </span>
+        </p>
       </div>
     </main>
   );

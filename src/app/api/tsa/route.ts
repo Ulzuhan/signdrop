@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientIp, rateLimit, tooManyRequests } from '@/lib/ratelimit';
 import { getSession } from '@/lib/auth/session';
+import { currentGuest } from '@/lib/auth/guest';
 
 /**
  * The only request this product makes to a third party, and the only thing it
@@ -25,9 +26,11 @@ import { getSession } from '@/lib/auth/session';
  *   wire can withhold a token or corrupt one, and cannot forge or replay one.
  *   Which matters because the free time-stamping services that Acrobat
  *   accepts, DigiCert's among them, publish no HTTPS endpoint.
- * - **It is not an open proxy.** Anonymous callers get a small allowance per
- *   IP; a signed-in one gets a larger allowance of their own. Without that,
- *   anyone could spend this deployment's quota at somebody else's TSA.
+ * - **It is not an open proxy.** A signed-in caller gets an allowance of
+ *   their own; a guest spends the allowance of whoever invited them, which is
+ *   what makes handing out an invitation a decision with a cost attached; and
+ *   anyone else gets a small one per IP. Without that, the deployment's quota
+ *   at somebody else's TSA is there for the taking.
  * - **Nothing about the body is logged**, on the way in or out. The hash is
  *   not interesting, but a log that grows a line per signature is a record of
  *   who signed and when, and this service does not keep records.
@@ -68,9 +71,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No time-stamping authority is configured.' }, { status: 503 });
   }
 
-  const session = await getSession();
-  const key = session ? `tsa:user:${session.sub}` : `tsa:ip:${clientIp(request)}`;
-  const limit = rateLimit(key, session ? SIGNED_IN_STAMPS : ANONYMOUS_STAMPS, WINDOW_MS);
+  const [session, guest] = await Promise.all([getSession(), currentGuest()]);
+  // A guest is accounted to the person who invited them: an invitation is a
+  // share of your own allowance, not a new one.
+  const key = session ? `tsa:user:${session.sub}` : guest ? `tsa:user:${guest.by}` : `tsa:ip:${clientIp(request)}`;
+  const limit = rateLimit(key, session || guest ? SIGNED_IN_STAMPS : ANONYMOUS_STAMPS, WINDOW_MS);
   if (!limit.allowed) return tooManyRequests(limit);
 
   const body = await request.arrayBuffer();

@@ -35,7 +35,9 @@
     "test:verify": "tsx scripts/test-verify.mjs",
     "test:trust": "tsx scripts/test-trust.mjs",
     "test:incremental": "tsx scripts/test-incremental.mjs",
-    "postinstall": "node scripts/copy-pdfjs-assets.mjs"
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs",
+    "test:backchannel": "bash scripts/test-backchannel.sh",
+    "test:acceso": "bash scripts/test-acceso.sh"
   },
   "dependencies": {
     "clsx": "^2.1.1",

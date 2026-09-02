@@ -3,8 +3,9 @@ import { Space_Grotesk, Inter, JetBrains_Mono, Caveat, Dancing_Script, Great_Vib
 import { KaiCorpHeader } from '@/components/kaicorp-header';
 import { KaiCorpFooter } from '@/components/kaicorp-footer';
 import { Toaster } from 'sonner';
+import { KaiCorpAccountMenu } from '@/components/kaicorp-account-menu';
 import { getSession } from '@/lib/auth/session';
-import { isOidcEnabled } from '@/lib/auth/oidc';
+import { accountUrl, oidcConfigured } from '@/lib/auth/oidc';
 import './globals.css';
 
 const display = Space_Grotesk({ variable: '--font-display', weight: ['500', '600', '700'], subsets: ['latin'] });
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     type: 'website',
     siteName: 'SignDrop',
-    locale: 'es_ES',
+    locale: 'en',
   },
   twitter: { card: 'summary_large_image' },
 };
@@ -65,41 +66,37 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getSession();
-  const oidcAvailable = isOidcEnabled();
+  const oidcAvailable = oidcConfigured();
   const enrollUrl = process.env.SIGNDROP_ENROLL_URL?.trim();
+  const provider = accountUrl();
 
   return (
     <html lang="en" className={`dark ${display.variable} ${sans.variable} ${mono.variable} ${caveat.variable} ${dancing.variable} ${vibes.variable} ${trad.variable}`}>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <KaiCorpHeader app="SignDrop">
           {session ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{session.name || session.email}</span>
-              <a
-                href="/api/auth/logout"
-                className="rounded-lg border px-2.5 py-1 text-xs text-muted-foreground hover:bg-white/5 hover:text-white"
-                style={{ borderColor: 'var(--kc-line)' }}
-              >
-                Cerrar sesión
-              </a>
-            </div>
+            // The house's own menu, not three buttons of our own. Signing out
+            // is its job too: it posts to /api/auth/logout and follows the
+            // `next` it answers with, which is what actually ends the session
+            // at the provider — the piece four of the five got wrong before
+            // it was written once.
+            <KaiCorpAccountMenu email={session.email} name={session.name} accountUrl={provider ?? undefined} />
           ) : oidcAvailable ? (
             <div className="flex items-center gap-2">
               <a
                 href="/api/auth/login"
                 className="rounded-lg bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-black"
               >
-                Iniciar sesión
+                Sign in
               </a>
               {enrollUrl && (
                 <a
                   href={enrollUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg border px-3 py-1 text-xs text-muted-foreground hover:bg-white/5 hover:text-white"
-                  style={{ borderColor: 'var(--kc-line)' }}
+                  className="sd-ghost-button"
                 >
-                  Registrarse
+                  Request access
                 </a>
               )}
             </div>

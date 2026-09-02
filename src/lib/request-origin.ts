@@ -16,7 +16,7 @@ import type { NextRequest } from "next/server";
  * `SIGNDROP_PUBLIC_HOST` queda para el caso contrario: un proxy que reescriba
  * `Host` con el nombre interno.
  */
-function hostDeConfianza(request: NextRequest): string | null {
+export function hostDeConfianza(request: NextRequest): string | null {
   return process.env.SIGNDROP_PUBLIC_HOST?.trim() || request.headers.get("host");
 }
 
@@ -41,4 +41,20 @@ export function isSameOriginMutation(request: NextRequest): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * The origin to put in a link somebody else will click.
+ *
+ * Not `request.nextUrl.origin`: behind the tunnel Next builds that from the
+ * socket it is listening on, so an invitation minted in production came out
+ * pointing at `localhost` — a link that works for nobody, which is the only
+ * thing an invitation must not be. Caught by the access suite, which asked
+ * for one over 127.0.0.1 and got `localhost` back.
+ */
+export function origenPublico(request: NextRequest): string {
+  const host = hostDeConfianza(request);
+  if (!host) return request.nextUrl.origin;
+  const local = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(host);
+  return `${local ? "http" : "https"}://${host}`;
 }
