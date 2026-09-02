@@ -239,8 +239,8 @@ const v8c = await verifyPdfSignatures(chained.sealedBytes, { anchors: withdrawn 
 ok(v8c.signatures[0].trust?.trusted === false && /withdrawn since 2024-05-01/.test(v8c.signatures[0].trust?.reason ?? ''), 'a withdrawn service is reported as withdrawn, with the date');
 
 console.log('9. The real trust store');
-const store = JSON.parse(readFileSync(new URL('../public/trust/es-trusted-list.json', import.meta.url), 'utf8'));
-ok(store.source.tsl === 'https://tsl.digital.gob.es/TSL.xml' && store.anchors.length > 200, `${store.anchors.length} anchors from the Spanish trusted list (seq ${store.source.tslSequenceNumber})`);
+const store = JSON.parse(readFileSync(new URL('../public/trust/es.json', import.meta.url), 'utf8'));
+ok(store.source.tsl === 'https://tsl.digital.gob.es/TSL.xml' && store.anchors.length > 200, `${store.anchors.length} anchors from the Spanish trusted list (seq ${store.source.sequence})`);
 const acusu = store.anchors.find((a) => a.sha256 === '601293ca20b09a03295d196256c6953ff9eba811db8e3ce140413c1bffe9a869');
 ok(acusu && acusu.services.some((s) => s.type === 'CA/QC' && s.status === 'granted'), 'AC FNMT Usuarios is in it, granted, for qualified certificates');
 ok(store.crossCheck.fnmtUsersCa.verifiesAgainstRoot === true, 'and was cross-checked against the FNMT root the FNMT publishes');

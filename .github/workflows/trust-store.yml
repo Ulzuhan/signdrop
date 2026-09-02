@@ -1,0 +1,94 @@
+name: Trust store
+
+# The EU trusted lists change without telling anyone: a provider is added, a
+# service is withdrawn, a national list is republished with a new sequence
+# number. Nothing in SignDrop notices — the store is a set of static files in
+# the repository, and it is only as current as the last time somebody ran the
+# script.
+#
+# So it runs itself, monthly, and opens a pull request when something moved.
+# The PR is the change management: a diff of who is trusted, reviewed by a
+# person, merged deliberately. Never a push to main — a trust store that
+# updates itself unattended is a trust store nobody is watching.
+#
+# The run fails if Spain drops out, because the Spanish list is the one this
+# house cross-checks by hand against what the FNMT publishes, and the suite
+# asserts on it.
+
+on:
+  schedule:
+    # 04:17 UTC on the 3rd of each month. The lists are republished every six
+    # months on no fixed date, so the day is arbitrary; the odd minute is to
+    # stay off the hour, when everyone else's cron runs.
+    - cron: '17 4 3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rebuild the store from the LOTL
+        id: build
+        run: |
+          node scripts/update-trust-store.mjs | tee /tmp/trust.log
+          {
+            echo 'summary<<TRUSTEOF'
+            cat /tmp/trust.log
+            echo TRUSTEOF
+          } >> "$GITHUB_OUTPUT"
+
+      # The store is only worth updating if the verifier still agrees with it.
+      - run: npm run test:trust
+      - run: npm run test:verify
+
+      - name: What changed
+        id: diff
+        run: |
+          git add -A public/trust
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing moved in any of the thirty lists."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --cached --stat public/trust | tail -40
+          fi
+
+      - name: Open the pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          branch: trust-store-refresh
+          commit-message: |
+            chore: refresh the trust store from the EU trusted lists
+
+            Rebuilt by .github/workflows/trust-store.yml. What follows is what
+            the script reported; the diff is who gained or lost a qualified
+            service since the last refresh.
+          title: 'chore: refresh the trust store from the EU trusted lists'
+          body: |
+            Monthly rebuild of `public/trust/` from the EU list of trusted lists.
+
+            Read the diff as a change to who SignDrop calls qualified: a new
+            anchor is a provider gaining a service, a removed one is a provider
+            losing it, and a changed `status` is a service withdrawn. The suite
+            (`test:trust`, `test:verify`) passed against this store before the
+            pull request was opened.
+
+            ```
+            ${{ steps.build.outputs.summary }}
+            ```
+          labels: trust-store
+          delete-branch: true

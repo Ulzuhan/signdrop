@@ -11,14 +11,16 @@
  * carries an RFC 3161 token — that the token's imprint is the hash of the
  * signature value and that the TSA's own signature verifies.
  *
- * What it does NOT do, and says so: validate certificate chains against a
- * trust store. It reports who issued the certificate and whether it is
- * self-signed; whether to trust that issuer is the reader's call.
+ * Whether the issuer is a qualified provider is a separate question, answered
+ * by `../trust/store` against the EU trusted lists and only when a store is
+ * supplied. Without one the report says the maths held and the issuer was not
+ * judged — which is a verdict, not a gap.
  *
  * Isomorphic on purpose: node-forge only, so the test suite exercises this
  * exact code in Node.
  */
 import forge from 'node-forge';
+import { forSignatures, forTimestamps, judgeTrust, type TrustAnchor, type TrustReport, type TrustStoreView } from '../trust/store';
 
 const asn1 = forge.asn1;
 
@@ -68,31 +70,6 @@ export interface CertificateSummary {
   selfSigned: boolean;
 }
 
-/** One certificate of the trust store, as scripts/update-trust-store.mjs writes it. */
-export interface TrustAnchor {
-  sha256: string;
-  pem: string;
-  services: TrustService[];
-}
-
-export interface TrustService {
-  provider: string;
-  tradeName: string | null;
-  service: string;
-  type: 'CA/QC' | 'TSA/QTST' | 'TSA' | 'TSA/TSS-QC';
-  status: string;
-  statusSince: string | null;
-  uses: string[];
-}
-
-export interface TrustReport {
-  /** The certificate chains to a service on the trusted list, within validity. */
-  trusted: boolean;
-  /** The service the chain ends in, when found — trusted or withdrawn. */
-  service: TrustService | null;
-  reason: string | null;
-}
-
 export interface TimestampReport {
   /** The imprint matches the signature and the TSA's signature verifies. */
   valid: boolean;
@@ -126,9 +103,18 @@ export interface SignatureReport {
   trust: TrustReport | null;
 }
 
+/**
+ * Given every certificate the PDF's signatures carry, the anchors to judge
+ * them against. Asynchronous because the store is thirty files on the origin
+ * and the point is to download only the territories this document needs.
+ */
+export type TrustProvider = (certificates: forge.pki.Certificate[]) => Promise<TrustStoreView>;
+
 export interface VerifyOptions {
   /** Trust anchors to chain certificates to; without them, trust is not judged. */
   anchors?: TrustAnchor[];
+  /** The same thing, resolved from the document's own certificates. Wins over `anchors`. */
+  trust?: TrustProvider;
 }
 
 export interface PdfVerification {
@@ -374,92 +360,6 @@ function checkSigner(signerInfo: Node, certificates: forge.pki.Certificate[], co
   return base;
 }
 
-// ─── Trust: chaining to the trusted list ─────────────────────────────────────
-
-const anchorCache = new WeakMap<TrustAnchor[], { store: forge.pki.CAStore; bySha: Map<string, TrustAnchor> }>();
-
-function anchorStore(anchors: TrustAnchor[]) {
-  let cached = anchorCache.get(anchors);
-  if (!cached) {
-    const bySha = new Map<string, TrustAnchor>();
-    const certs: forge.pki.Certificate[] = [];
-    for (const anchor of anchors) {
-      try {
-        certs.push(forge.pki.certificateFromPem(anchor.pem));
-        bySha.set(anchor.sha256, anchor);
-      } catch {
-        // A certificate forge cannot read (an EC key, say) cannot anchor anything here.
-      }
-    }
-    cached = { store: forge.pki.createCaStore(certs), bySha };
-    anchorCache.set(anchors, cached);
-  }
-  return cached;
-}
-
-function sha256OfCert(cert: forge.pki.Certificate): string {
-  return forge.util.bytesToHex(digestOf('sha256', [asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes()]));
-}
-
-/**
- * Does `leaf` chain to a service on the trusted list? The chain is built from
- * the certificates the signature carries; forge checks each signature,
- * validity at `at`, and basic constraints, and stops at the first
- * certificate the store knows. A withdrawn service is reported as such, not
- * as trusted: the list says when it stopped being one.
- */
-function judgeTrust(
-  leaf: forge.pki.Certificate,
-  carried: forge.pki.Certificate[],
-  anchors: TrustAnchor[],
-  at: Date | null,
-  wanted: (service: TrustService) => boolean
-): TrustReport {
-  const { store, bySha } = anchorStore(anchors);
-  // Leaf first, then whoever issued the last link, as far as the signature carries.
-  const chain: forge.pki.Certificate[] = [leaf];
-  for (let guard = 0; guard < 8; guard++) {
-    const top = chain[chain.length - 1];
-    if (store.hasCertificate(top) || store.getIssuer(top)) break;
-    const issuer = carried.find((c) => c !== top && !chain.includes(c) && top.isIssuer(c));
-    if (!issuer) break;
-    chain.push(issuer);
-  }
-  try {
-    forge.pki.verifyCertificateChain(store, chain, { validityCheckDate: at ?? new Date() });
-  } catch (error) {
-    const e = error as { error?: string; message?: string };
-    const reason =
-      e.error === 'forge.pki.UnknownCertificateAuthority'
-        ? 'The issuer is not on the trusted list.'
-        : e.error === 'forge.pki.CertificateExpired' || e.error === 'forge.pki.CertificateNotYetValid'
-          ? 'A certificate in the chain was not valid at the signing time.'
-          : e.message || 'The certificate chain does not verify.';
-    return { trusted: false, service: null, reason };
-  }
-  // The anchor: the first certificate of the chain the store holds, or the store's issuer of the top.
-  let anchorCert: forge.pki.Certificate | null = null;
-  for (const cert of chain) {
-    if (store.hasCertificate(cert)) { anchorCert = cert; break; }
-    const issuer = store.getIssuer(cert);
-    if (issuer) { anchorCert = issuer; break; }
-  }
-  const anchor = anchorCert ? bySha.get(sha256OfCert(anchorCert)) ?? null : null;
-  const services = anchor ? anchor.services.filter(wanted) : [];
-  if (!anchor || services.length === 0) {
-    return { trusted: false, service: null, reason: 'The chain ends in a listed certificate, but not for this kind of service.' };
-  }
-  const granted = services.find((svc) => svc.status === 'granted');
-  const service = granted ?? services[0];
-  if (!granted) {
-    return { trusted: false, service, reason: `The service is listed as ${service.status}${service.statusSince ? ` since ${service.statusSince.slice(0, 10)}` : ''}.` };
-  }
-  return { trusted: true, service, reason: null };
-}
-
-const forSignatures = (svc: TrustService) => svc.type === 'CA/QC';
-const forTimestamps = (svc: TrustService) => svc.type.startsWith('TSA');
-
 // ─── RFC 3161 tokens ─────────────────────────────────────────────────────────
 
 export interface TstInfo {
@@ -493,7 +393,7 @@ export function parseTimeStampToken(token: Node): { tstInfo: TstInfo; signedData
 }
 
 /** Verifies a TimeStampToken against the signature value it should imprint. */
-export function verifyTimeStampToken(token: Node, signatureValue: string, anchors?: TrustAnchor[]): TimestampReport {
+export function verifyTimeStampToken(token: Node, signatureValue: string, anchors?: TrustStoreView | TrustAnchor[]): TimestampReport {
   let parsed: ReturnType<typeof parseTimeStampToken>;
   try {
     parsed = parseTimeStampToken(token);
@@ -579,6 +479,8 @@ export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, optio
   const pdf = toBinary(bytes);
   const sha256 = forge.util.bytesToHex(digestOf('sha256', [pdf]));
   const signatures: SignatureReport[] = [];
+  /** What the second pass needs: judging is not possible until every certificate is on the table. */
+  const pending: { report: SignatureReport; certificate: forge.pki.Certificate | null; carried: forge.pki.Certificate[]; signingTime: Date | null; token: Node | null; signatureValue: string }[] = [];
 
   locateSignatures(pdf).forEach((located, index) => {
     const [a, b, c, d] = located.byteRange;
@@ -620,11 +522,16 @@ export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, optio
           check.signingTime >= check.certificate.validity.notBefore &&
           check.signingTime <= check.certificate.validity.notAfter;
       }
-      if (options.anchors && check.certificate) {
-        report.trust = judgeTrust(check.certificate, signedData.certificates, options.anchors, check.signingTime, forSignatures);
-      }
       const token = attributeValue(check.unsignedAttributes, OID.signatureTimeStampToken);
-      if (token) report.timestamp = verifyTimeStampToken(token, check.signatureValue, options.anchors);
+      if (token) report.timestamp = verifyTimeStampToken(token, check.signatureValue);
+      pending.push({
+        report,
+        certificate: check.certificate,
+        carried: signedData.certificates,
+        signingTime: check.signingTime,
+        token,
+        signatureValue: check.signatureValue,
+      });
     } catch (error) {
       // A malformed signature is a verdict, not a crash. The detail is kept
       // for whoever is debugging with the environment flag set.
@@ -633,6 +540,25 @@ export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, optio
     }
     signatures.push(report);
   });
+
+  // Second pass. The provider gets every certificate at once so it can work
+  // out which territories' lists this document actually needs and fetch those
+  // — asking once per signature would download the same file twice.
+  const view = options.trust
+    ? await options.trust(pending.flatMap((p) => p.carried)).catch(() => null)
+    : options.anchors
+      ? { anchors: options.anchors }
+      : null;
+  if (view) {
+    for (const item of pending) {
+      if (item.certificate) {
+        item.report.trust = judgeTrust(item.certificate, item.carried, view, item.signingTime, forSignatures);
+      }
+      // Re-read the token now that there is a store: parsing a few kilobytes
+      // of DER twice is cheaper than threading the TSA's certificate through.
+      if (item.token) item.report.timestamp = verifyTimeStampToken(item.token, item.signatureValue, view);
+    }
+  }
 
   const last = signatures.reduce<SignatureReport | null>((best, s) => {
     const end = s.byteRange[2] + s.byteRange[3];

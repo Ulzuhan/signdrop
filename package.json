@@ -30,9 +30,10 @@
     "start": "node scripts/start.js",
     "postbuild": "node scripts/prepare-standalone.js",
     "lint": "eslint",
-    "test": "tsx scripts/test-pdf-signing.mjs && tsx scripts/test-pades-and-tsa.mjs && tsx scripts/test-verify.mjs",
+    "test": "tsx scripts/test-pdf-signing.mjs && tsx scripts/test-pades-and-tsa.mjs && tsx scripts/test-verify.mjs && tsx scripts/test-trust.mjs",
     "test:pades": "tsx scripts/test-pades-and-tsa.mjs",
-    "test:verify": "tsx scripts/test-verify.mjs"
+    "test:verify": "tsx scripts/test-verify.mjs",
+    "test:trust": "tsx scripts/test-trust.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
