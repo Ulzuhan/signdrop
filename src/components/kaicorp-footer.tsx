@@ -1,3 +1,5 @@
+/* GENERADO por kaicorplabs/tools/sync-theme.sh — NO EDITAR AQUÍ.
+   El original está en el repo kaicorplabs (theme/). */
 import Link from "next/link";
 
 /**
@@ -23,6 +25,7 @@ const SERVICES = [
   { name: "DocDrop", url: "https://docdrop.kaicorplabs.com", slug: "docdrop" },
   { name: "SecretDrop", url: "https://secret.kaicorplabs.com", slug: "secretdrop" },
   { name: "Pixelforge", url: "https://pixel.kaicorplabs.com", slug: "pixelforge" },
+  { name: "LinkUp", url: "https://link.kaicorplabs.com", slug: "linkup" },
 ];
 
 export function KaiCorpFooter({ current }: { current?: string }) {
