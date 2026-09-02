@@ -1,0 +1,61 @@
+{
+  "name": "signdrop",
+  "version": "1.0.0",
+  "description": "Client-side PDF signing, cryptographic sealing, and document verification. Zero-knowledge and tamper-evident.",
+  "license": "MIT",
+  "author": "Ulzuhan (https://github.com/Ulzuhan)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ulzuhan/signdrop.git"
+  },
+  "homepage": "https://github.com/Ulzuhan/signdrop#readme",
+  "bugs": {
+    "url": "https://github.com/Ulzuhan/signdrop/issues"
+  },
+  "keywords": [
+    "pdf-signing",
+    "zero-knowledge",
+    "crypto",
+    "pdf-lib",
+    "tamper-evident",
+    "sha256",
+    "audit-trail"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev -p 3466",
+    "build": "next build",
+    "start": "node scripts/start.js",
+    "postbuild": "node scripts/prepare-standalone.js",
+    "lint": "eslint",
+    "test": "tsx scripts/test-pdf-signing.mjs"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.28.0",
+    "next": "^15.2.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^4.10.38",
+    "qrcode": "^1.5.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "signature_pad": "^5.0.4",
+    "sonner": "^2.0.1",
+    "tailwind-merge": "^3.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.9",
+    "@types/node": "^20.17.19",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "eslint": "^9.21.0",
+    "eslint-config-next": "^15.2.0",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.9",
+    "tsx": "^4.23.13",
+    "typescript": "^5.7.3"
+  }
+}

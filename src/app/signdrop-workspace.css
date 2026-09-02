@@ -1,0 +1,137 @@
+/* ══════════════════════════════════════════════════════════════════════
+   SignDrop Workspace Styles & Component Tokens
+   ══════════════════════════════════════════════════════════════════════ */
+
+.sig-workspace {
+  --sig-accent: #00b4d8;
+  --sig-accent-rgb: 0, 180, 216;
+  --sig-accent-hover: #0096c7;
+  --sig-accent-glow: rgba(0, 180, 216, 0.18);
+  --sig-selection: rgba(0, 180, 216, 0.4);
+  --sig-ink-black: #0f172a;
+  --sig-ink-blue: #003566;
+  --sig-ink-navy: #1e293b;
+}
+
+/* ── Canvas & PDF Viewer ── */
+.sig-pdf-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  user-select: none;
+}
+
+.sig-page-wrapper {
+  position: relative;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.45);
+  transition: transform 0.15s ease-out;
+  background-color: #ffffff;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.sig-overlay-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+}
+
+/* ── Stamp Elements on PDF ── */
+.sig-stamp-box {
+  position: absolute;
+  cursor: move;
+  border: 1.5px dashed transparent;
+  transition: border-color 0.15s ease;
+  touch-action: none;
+  user-select: none;
+}
+
+.sig-stamp-box.selected {
+  border-color: var(--sig-accent);
+  background-color: rgba(0, 180, 216, 0.06);
+}
+
+.sig-stamp-box:hover:not(.selected) {
+  border-color: rgba(0, 180, 216, 0.4);
+}
+
+.sig-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid var(--sig-accent);
+  border-radius: 50%;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.sig-handle-nw { top: -5px; left: -5px; cursor: nwse-resize; }
+.sig-handle-ne { top: -5px; right: -5px; cursor: nesw-resize; }
+.sig-handle-se { bottom: -5px; right: -5px; cursor: nwse-resize; }
+.sig-handle-sw { bottom: -5px; left: -5px; cursor: nesw-resize; }
+
+.sig-stamp-actions {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  background: var(--kc-panel, #0c1019);
+  border: 1px solid var(--kc-line, #1b2333);
+  border-radius: 6px;
+  padding: 3px 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 20;
+}
+
+/* ── Signature Pad Styles ── */
+.sig-pad-wrapper {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--kc-line-2, #263049);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.sig-pad-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Verification Badge & Statuses ── */
+.sig-badge-valid {
+  background-color: rgba(67, 215, 135, 0.12);
+  border: 1px solid rgba(67, 215, 135, 0.4);
+  color: #43d787;
+}
+
+.sig-badge-tampered {
+  background-color: rgba(255, 107, 107, 0.12);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  color: #ff6b6b;
+}
+
+/* ── Typography & Handwriting Font Classes ── */
+.font-sig-caveat {
+  font-family: 'Caveat', cursive, sans-serif;
+}
+
+.font-sig-dancing {
+  font-family: 'Dancing Script', cursive, sans-serif;
+}
+
+.font-sig-vibes {
+  font-family: 'Great Vibes', cursive, sans-serif;
+}
+
+.font-sig-trad {
+  font-family: 'Playwrite US Trad', cursive, sans-serif;
+}
