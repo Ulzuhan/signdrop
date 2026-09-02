@@ -38,12 +38,12 @@ export function Workspace() {
     <main className="flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6">
       {/* Hero Title & Description */}
       <div className="mx-auto max-w-3xl text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-semibold text-primary shadow-sm" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
+        <div className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1 text-xs font-semibold text-primary shadow-sm sd-panel">
           <Sparkles className="size-3.5" />
           PDF signing that never leaves your browser
         </div>
 
-        <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl" style={{ fontFamily: 'var(--kc-font-display)' }}>
+        <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl sd-display">
           Sign and seal contracts without handing them to anyone
         </h1>
 
@@ -59,11 +59,11 @@ export function Workspace() {
 
       {/* Features Grid */}
       <div className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-6 sm:grid-cols-3">
-        <div className="rounded-2xl border p-6" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
+        <div className="rounded-2xl border p-6 sd-panel">
           <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Lock className="size-5" />
           </div>
-          <h3 className="mt-4 text-sm font-bold text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
+          <h3 className="mt-4 text-sm font-bold text-foreground sd-display">
             The server never sees it
           </h3>
           <p className="mt-1.5 text-xs text-muted-foreground">
@@ -71,11 +71,11 @@ export function Workspace() {
           </p>
         </div>
 
-        <div className="rounded-2xl border p-6" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
+        <div className="rounded-2xl border p-6 sd-panel">
           <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
             <Shield className="size-5" />
           </div>
-          <h3 className="mt-4 text-sm font-bold text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
+          <h3 className="mt-4 text-sm font-bold text-foreground sd-display">
             A seal anyone can check
           </h3>
           <p className="mt-1.5 text-xs text-muted-foreground">
@@ -83,11 +83,11 @@ export function Workspace() {
           </p>
         </div>
 
-        <div className="rounded-2xl border p-6" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
+        <div className="rounded-2xl border p-6 sd-panel">
           <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
             <Cpu className="size-5" />
           </div>
-          <h3 className="mt-4 text-sm font-bold text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
+          <h3 className="mt-4 text-sm font-bold text-foreground sd-display">
             Three ways to sign
           </h3>
           <p className="mt-1.5 text-xs text-muted-foreground">

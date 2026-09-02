@@ -42,11 +42,11 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
   const handleSaveCurrent = () => {
     if (!newTemplateName.trim()) {
-      toast.error('Indica un nombre para la plantilla.');
+      toast.error('Give the template a name.');
       return;
     }
     if (currentStamps.length === 0) {
-      toast.error('No hay marcas colocadas en el documento actual.');
+      toast.error('There is nothing placed on this document yet.');
       return;
     }
     saveTemplate(newTemplateName, newTemplateDesc, currentStamps);
@@ -54,13 +54,13 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
     setNewTemplateDesc('');
     setMode('list');
     reload();
-    toast.success('Plantilla guardada correctamente.');
+    toast.success('Template saved.');
   };
 
   const handleDelete = (id: string) => {
     deleteTemplate(id);
     reload();
-    toast.info('Plantilla eliminada.');
+    toast.info('Template deleted.');
   };
 
   const handleExport = () => {
@@ -72,7 +72,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
     a.download = `signdrop_templates_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('Plantillas exportadas a JSON.');
+    toast.success('Templates exported as JSON.');
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,9 +85,9 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         const text = event.target?.result as string;
         const count = importTemplatesFromJson(text);
         reload();
-        toast.success(`${count} plantilla(s) importadas con éxito.`);
+        toast.success(`${count} template(s) imported.`);
       } catch (err: any) {
-        toast.error(err.message || 'Error al importar archivo JSON');
+        toast.error(err.message || 'That JSON file could not be read');
       }
     };
     reader.readAsText(file);
@@ -96,23 +96,20 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div
-        className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl border bg-card p-6 shadow-2xl"
-        style={{
-          borderColor: 'var(--kc-line)',
-          background: 'var(--kc-panel, #0c1019)',
-        }}
+        className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl border bg-card p-6 shadow-2xl sd-panel"
+
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="flex items-center justify-between border-b pb-4 sd-line">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Layers className="size-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
-                Plantillas de Disposición Reutilizables
+              <h3 className="text-lg font-bold tracking-tight text-foreground sd-display">
+                Reusable field layouts
               </h3>
-              <p className="text-[11px] text-muted-foreground">Aplica posiciones estándar de firmas y campos con un solo clic</p>
+              <p className="text-[11px] text-muted-foreground">Put the same fields in the same places on the next document, in one click</p>
             </div>
           </div>
           <button
@@ -128,22 +125,20 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => setMode('list')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`sd-line rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                 mode === 'list' ? 'bg-primary text-black' : 'border text-muted-foreground hover:text-white'
               }`}
-              style={{ borderColor: 'var(--kc-line)' }}
             >
-              Mis Plantillas ({templates.length})
+              My templates ({templates.length})
             </button>
             <button
               onClick={() => setMode('save')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`sd-line flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                 mode === 'save' ? 'bg-primary text-black' : 'border text-muted-foreground hover:text-white'
               }`}
-              style={{ borderColor: 'var(--kc-line)' }}
             >
               <BookmarkPlus className="size-3.5" />
-              Guardar actual ({currentStamps.length} marcas)
+              Save this one ({currentStamps.length} marks)
             </button>
           </div>
 
@@ -151,8 +146,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             <button
               onClick={handleExport}
               title="Exportar a JSON"
-              className="flex items-center gap-1 rounded-lg border p-1.5 text-xs text-muted-foreground hover:bg-white/5 hover:text-white"
-              style={{ borderColor: 'var(--kc-line)' }}
+              className="flex items-center gap-1 rounded-lg border p-1.5 text-xs text-muted-foreground hover:bg-white/5 hover:text-white sd-line"
             >
               <Download className="size-3.5" />
               <span className="hidden sm:inline">Exportar</span>
@@ -160,8 +154,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               title="Importar de JSON"
-              className="flex items-center gap-1 rounded-lg border p-1.5 text-xs text-muted-foreground hover:bg-white/5 hover:text-white"
-              style={{ borderColor: 'var(--kc-line)' }}
+              className="flex items-center gap-1 rounded-lg border p-1.5 text-xs text-muted-foreground hover:bg-white/5 hover:text-white sd-line"
             >
               <Upload className="size-3.5" />
               <span className="hidden sm:inline">Importar</span>
@@ -179,33 +172,31 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         {/* Content */}
         <div className="mt-4 flex-1 overflow-y-auto pr-1">
           {mode === 'save' ? (
-            <div className="space-y-4 rounded-xl border p-4" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}>
+            <div className="space-y-4 rounded-xl border p-4 sd-inset">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground">Nombre de la plantilla:</label>
                 <input
                   type="text"
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
-                  placeholder="Ej. Contrato de Arrendamiento / NDA Estándar"
-                  className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                  style={{ borderColor: 'var(--kc-line)' }}
+                  placeholder="e.g. Lease agreement, standard NDA"
+                  className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary sd-line"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-muted-foreground">Descripción (Opcional):</label>
+                <label className="text-xs font-semibold text-muted-foreground">Description (optional)</label>
                 <textarea
                   value={newTemplateDesc}
                   onChange={(e) => setNewTemplateDesc(e.target.value)}
-                  placeholder="Notas sobre dónde van las firmas..."
+                  placeholder="Where the signatures go, in your own words…"
                   rows={2}
-                  className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
-                  style={{ borderColor: 'var(--kc-line)' }}
+                  className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-primary sd-line"
                 />
               </div>
 
               <div className="text-xs text-muted-foreground">
-                <span className="font-semibold text-foreground">{currentStamps.length} campos</span> serán guardados con sus posiciones relativas.
+                <span className="font-semibold text-foreground">{currentStamps.length} fields</span> will be saved with their positions, as a share of the page.
               </div>
 
               <button
@@ -214,13 +205,13 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 text-xs font-bold text-black hover:opacity-90"
               >
                 <Check className="size-4" />
-                Guardar Plantilla
+                Save template
               </button>
             </div>
           ) : (
             <div className="space-y-3">
               {templates.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-xl border py-8 text-center" style={{ borderColor: 'var(--kc-line)' }}>
+                <div className="flex flex-col items-center justify-center rounded-xl border py-8 text-center sd-line">
                   <FileText className="size-8 text-muted-foreground opacity-50" />
                   <p className="mt-2 text-xs text-muted-foreground">No tienes plantillas guardadas.</p>
                 </div>
@@ -228,8 +219,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                 templates.map((tpl) => (
                   <div
                     key={tpl.id}
-                    className="flex items-center justify-between rounded-xl border p-3.5 transition-colors hover:border-primary/40"
-                    style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}
+                    className="flex items-center justify-between rounded-xl border p-3.5 transition-colors hover:border-primary/40 sd-inset"
                   >
                     <div className="min-w-0 flex-1 pr-3">
                       <div className="flex items-center gap-2">
@@ -249,7 +239,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                         onClick={() => {
                           onApplyTemplate(tpl);
                           onClose();
-                          toast.success(`Plantilla "${tpl.name}" aplicada.`);
+                          toast.success(`Applied “${tpl.name}”.`);
                         }}
                         className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-black hover:opacity-90"
                       >
@@ -259,7 +249,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                         type="button"
                         onClick={() => handleDelete(tpl.id)}
                         className="p-1.5 text-muted-foreground hover:text-red-400"
-                        title="Eliminar plantilla"
+                        title="Delete template"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -272,14 +262,13 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="mt-6 flex justify-end border-t pt-4" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="mt-6 flex justify-end border-t pt-4 sd-line">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white"
-            style={{ borderColor: 'var(--kc-line)' }}
+            className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white sd-line"
           >
-            Cerrar
+            Close
           </button>
         </div>
       </div>

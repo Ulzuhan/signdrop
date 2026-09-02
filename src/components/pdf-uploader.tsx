@@ -20,12 +20,12 @@ export const PdfUploader: React.FC<PdfUploaderProps> = ({ onDocumentLoaded }) =>
 
   const processFile = async (file: File) => {
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      toast.error('Por favor, selecciona un documento en formato PDF válido.');
+      toast.error('Choose a PDF.');
       return;
     }
 
     if (file.size > 100 * 1024 * 1024) {
-      toast.error('El documento supera el límite recomendado de 100 MB para procesamiento local.');
+      toast.error('Over 100 MB: this browser may struggle to work on it.');
       return;
     }
 
@@ -42,10 +42,10 @@ export const PdfUploader: React.FC<PdfUploaderProps> = ({ onDocumentLoaded }) =>
       };
 
       onDocumentLoaded({ arrayBuffer: buffer, info });
-      toast.success('Documento cargado localmente con éxito.');
+      toast.success('Loaded. It stayed in this browser.');
     } catch (err) {
       console.error(err);
-      toast.error('Error al procesar el archivo PDF.');
+      toast.error('That PDF could not be read.');
     } finally {
       setIsProcessing(false);
     }
@@ -88,26 +88,26 @@ export const PdfUploader: React.FC<PdfUploaderProps> = ({ onDocumentLoaded }) =>
         {/* Halo Glow */}
         <div className="absolute -top-12 size-36 rounded-full bg-primary/10 blur-3xl transition-opacity group-hover:opacity-100" />
 
-        <div className="relative flex size-20 items-center justify-center rounded-2xl border bg-background/80 shadow-lg" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="relative flex size-20 items-center justify-center rounded-2xl border bg-background/80 shadow-lg sd-line">
           <FileUp className="size-10 text-primary transition-transform duration-300 group-hover:-translate-y-1" />
         </div>
 
-        <h2 className="mt-6 text-xl font-bold tracking-tight text-foreground sm:text-2xl" style={{ fontFamily: 'var(--kc-font-display)' }}>
-          Arrastra tu PDF aquí o haz clic para seleccionarlo
+        <h2 className="mt-6 text-xl font-bold tracking-tight text-foreground sm:text-2xl sd-display">
+          Drop a PDF here, or click to choose one
         </h2>
 
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          Firma, inicializa, añade fechas y genera sellos criptográficos SHA-256.
+          Sign it, initial it, date it, and seal it with a SHA-256 audit sheet anybody can check.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground" style={{ borderColor: 'var(--kc-line)' }}>
+          <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground sd-line">
             <Lock className="size-3 text-primary" />
-            100% en tu navegador (Zero-Knowledge)
+            Opened in this browser, never uploaded
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground" style={{ borderColor: 'var(--kc-line)' }}>
+          <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium text-muted-foreground sd-line">
             <ShieldCheck className="size-3 text-emerald-400" />
-            Sello de Integridad SHA-256
+            SHA-256 audit seal
           </span>
         </div>
 
@@ -115,25 +115,24 @@ export const PdfUploader: React.FC<PdfUploaderProps> = ({ onDocumentLoaded }) =>
           <div className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/60 backdrop-blur-sm">
             <div className="flex flex-col items-center gap-2">
               <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <span className="text-xs font-medium text-white">Calculando hash y preparando lienzo...</span>
+              <span className="text-xs font-medium text-white">Hashing it and getting the canvas ready…</span>
             </div>
           </div>
         )}
       </div>
 
       {/* Verification Direct Link Banner */}
-      <div className="mt-6 flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2,#080b13)' }}>
+      <div className="mt-6 flex items-center justify-between rounded-2xl border p-4 sd-inset">
         <div className="flex items-center gap-3">
           <FileText className="size-5 text-muted-foreground" />
           <div className="text-left">
-            <p className="text-xs font-semibold text-foreground">¿Ya tienes un documento sellado?</p>
-            <p className="text-[11px] text-muted-foreground">Comprueba la autenticidad y el hash de cualquier PDF firmado con SignDrop.</p>
+            <p className="text-xs font-semibold text-foreground">Already have a signed document?</p>
+            <p className="text-[11px] text-muted-foreground">Check its signatures, its time-stamp and who issued the certificate. No account needed.</p>
           </div>
         </div>
         <a
           href="/verify"
-          className="flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-          style={{ borderColor: 'var(--kc-line-2)' }}
+          className="flex items-center gap-1 rounded-xl border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 sd-line-2"
         >
           Verificar PDF
           <ArrowRight className="size-3.5" />

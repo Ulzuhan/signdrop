@@ -70,8 +70,7 @@ export const SignaturePadCanvas: React.FC<SignaturePadCanvasProps> = ({
     <div className="sig-pad-wrapper relative h-56 w-full touch-none bg-white">
       <canvas
         ref={canvasRef}
-        className="sig-pad-canvas h-full w-full"
-        style={{ touchAction: 'none' }}
+        className="sig-pad-canvas h-full w-full sd-no-touch"
       />
     </div>
   );

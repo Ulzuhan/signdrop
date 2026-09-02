@@ -34,14 +34,14 @@ interface CertificateModalProps {
 function TrustVerdict({ trust }: { trust: TrustReport | null | 'checking' }) {
   if (trust === 'checking') {
     return (
-      <div className="rounded-xl border p-3 text-[11px] text-muted-foreground" style={{ borderColor: 'var(--kc-line)' }}>
+      <div className="rounded-xl border p-3 text-[11px] text-muted-foreground sd-line">
         Checking the certificate against the EU trusted lists…
       </div>
     );
   }
   if (!trust) {
     return (
-      <div className="rounded-xl border p-3 text-[11px] text-muted-foreground" style={{ borderColor: 'var(--kc-line)' }}>
+      <div className="rounded-xl border p-3 text-[11px] text-muted-foreground sd-line">
         <p className="font-semibold text-foreground">Issuer not judged</p>
         <p className="mt-1">No trusted list could be reached, so nothing is claimed about who issued this certificate. The signature will still be cryptographically sound.</p>
       </div>
@@ -49,7 +49,7 @@ function TrustVerdict({ trust }: { trust: TrustReport | null | 'checking' }) {
   }
   if (trust.trusted && trust.service) {
     return (
-      <div className="rounded-xl border p-3 text-[11px]" style={{ borderColor: 'var(--kc-ok, #43d787)', background: 'rgba(67, 215, 135, 0.05)' }}>
+      <div className="rounded-xl border p-3 text-[11px] sd-ok">
         <p className="font-semibold text-emerald-400">Qualified certificate, issued by {trust.service.provider}</p>
         <p className="mt-1 text-muted-foreground">
           {trust.service.service}
@@ -60,14 +60,14 @@ function TrustVerdict({ trust }: { trust: TrustReport | null | 'checking' }) {
   }
   if (!trust.judged) {
     return (
-      <div className="rounded-xl border p-3 text-[11px] text-muted-foreground" style={{ borderColor: 'var(--kc-line)' }}>
+      <div className="rounded-xl border p-3 text-[11px] text-muted-foreground sd-line">
         <p className="font-semibold text-foreground">Issuer not judged</p>
         <p className="mt-1">{trust.reason}</p>
       </div>
     );
   }
   return (
-    <div className="rounded-xl border p-3 text-[11px]" style={{ borderColor: 'var(--kc-warn, #f2b544)', background: 'rgba(242, 181, 68, 0.05)' }}>
+    <div className="rounded-xl border p-3 text-[11px] sd-warn">
       <p className="font-semibold text-amber-300">Not on any trusted list</p>
       <p className="mt-1 text-muted-foreground">
         {trust.reason} You can sign with it, and the maths will check out — but the signature will not carry the legal weight
@@ -164,20 +164,17 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div
-        className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl"
-        style={{
-          borderColor: 'var(--kc-line)',
-          background: 'var(--kc-panel, #0c1019)',
-        }}
+        className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl sd-panel"
+
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="flex items-center justify-between border-b pb-4 sd-line">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Award className="size-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
+              <h3 className="text-lg font-bold tracking-tight text-foreground sd-display">
                 X.509 certificate (PAdES)
               </h3>
               <p className="text-[11px] text-muted-foreground">Advanced signature, validated by Adobe Acrobat Reader</p>
@@ -197,8 +194,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             <div>
               <label
                 onClick={() => fileInputRef.current?.click()}
-                className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors hover:border-primary/50"
-                style={{ borderColor: 'var(--kc-line)' }}
+                className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors hover:border-primary/50 sd-line"
               >
                 <FileKey className="size-8 text-primary" />
                 <span className="mt-2 text-xs font-semibold text-foreground">
@@ -217,7 +213,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
               </label>
 
               {p12Buffer && (
-                <div className="mt-4 rounded-xl border p-4" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}>
+                <div className="mt-4 rounded-xl border p-4 sd-inset">
                   <label className="text-xs font-semibold text-muted-foreground">Certificate password</label>
                   <div className="mt-1.5 flex gap-2">
                     <input
@@ -226,8 +222,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                       onChange={(e) => setPassword(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
                       placeholder="The password that protects the key"
-                      className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                      style={{ borderColor: 'var(--kc-line)' }}
+                      className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary sd-line"
                     />
                     <button
                       type="button"
@@ -244,7 +239,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="rounded-xl border p-4" style={{ borderColor: 'var(--kc-ok, #43d787)', background: 'rgba(67, 215, 135, 0.05)' }}>
+              <div className="rounded-xl border p-4 sd-ok">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-emerald-400">
                     <Check className="size-4" />
@@ -290,7 +285,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 
               <TrustVerdict trust={trust} />
 
-              <div className="rounded-xl border p-3 text-[11px] text-muted-foreground" style={{ borderColor: 'var(--kc-line)' }}>
+              <div className="rounded-xl border p-3 text-[11px] text-muted-foreground sd-line">
                 <p className="flex items-center gap-1.5 text-primary">
                   <Award className="size-3.5" />
                   PAdES mode
@@ -304,12 +299,11 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4 sd-line">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white"
-            style={{ borderColor: 'var(--kc-line)' }}
+            className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white sd-line"
           >
             Close
           </button>

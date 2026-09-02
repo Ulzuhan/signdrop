@@ -11,27 +11,27 @@ const STORAGE_KEY = 'signdrop_templates';
 const DEFAULT_TEMPLATES: DocumentTemplate[] = [
   {
     id: 'tpl_contrato_std',
-    name: 'Contrato Estándar (Firma + Fecha)',
-    description: 'Disposición típica al pie de página con bloque de firma, nombre completo y fecha.',
+    name: 'Standard contract (signature and date)',
+    description: 'The usual footer layout: a signature block, the full name and the date.',
     createdAt: '2026-09-02T00:00:00.000Z',
     updatedAt: '2026-09-02T00:00:00.000Z',
     fields: [
       { type: 'signature', page: 1, x: 15, y: 78, width: 30, height: 10, label: 'Firma Principal' },
       { type: 'text', page: 1, x: 15, y: 89, width: 30, height: 4, label: 'Nombre del Firmante' },
-      { type: 'date', page: 1, x: 60, y: 78, width: 25, height: 5, label: 'Fecha' },
+      { type: 'date', page: 1, x: 60, y: 78, width: 25, height: 5, label: 'Date' },
     ],
   },
   {
     id: 'tpl_nda_completo',
     name: 'Acuerdo de Confidencialidad (NDA)',
-    description: 'Iniciales en el lateral y firma con casilla de aceptación al final.',
+    description: 'Initials down the margin, and a signature with an acceptance box at the end.',
     createdAt: '2026-09-02T00:00:00.000Z',
     updatedAt: '2026-09-02T00:00:00.000Z',
     fields: [
-      { type: 'initials', page: 1, x: 88, y: 92, width: 10, height: 6, label: 'Iniciales' },
-      { type: 'checkbox', page: 1, x: 12, y: 72, width: 5, height: 4, label: 'Acepto términos' },
-      { type: 'signature', page: 1, x: 20, y: 78, width: 28, height: 10, label: 'Firma' },
-      { type: 'date', page: 1, x: 60, y: 78, width: 25, height: 5, label: 'Fecha' },
+      { type: 'initials', page: 1, x: 88, y: 92, width: 10, height: 6, label: 'Initials' },
+      { type: 'checkbox', page: 1, x: 12, y: 72, width: 5, height: 4, label: 'I accept' },
+      { type: 'signature', page: 1, x: 20, y: 78, width: 28, height: 10, label: 'Signature' },
+      { type: 'date', page: 1, x: 60, y: 78, width: 25, height: 5, label: 'Date' },
     ],
   },
 ];

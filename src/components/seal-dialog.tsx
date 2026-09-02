@@ -55,7 +55,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
       setCopiedSealed(true);
       setTimeout(() => setCopiedSealed(false), 2000);
     }
-    toast.success('Hash copiado al portapapeles.');
+    toast.success('Hash copied.');
   };
 
   const handleDownload = () => {
@@ -66,7 +66,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success('Documento sellado descargado.');
+    toast.success('Sealed document downloaded.');
   };
 
   const handleSendToDocDrop = () => {
@@ -77,24 +77,21 @@ export const SealDialog: React.FC<SealDialogProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border bg-card p-6 shadow-2xl"
-        style={{
-          borderColor: 'var(--kc-line)',
-          background: 'var(--kc-panel, #0c1019)',
-        }}
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border bg-card p-6 shadow-2xl sd-panel"
+
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="flex items-center justify-between border-b pb-4 sd-line">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ShieldCheck className="size-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold tracking-tight text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
-                {sealedPdfBlobUrl ? 'Documento Sellado con Éxito' : 'Sellar y Certificar Documento'}
+              <h3 className="text-lg font-bold tracking-tight text-foreground sd-display">
+                {sealedPdfBlobUrl ? 'Sealed' : 'Seal and sign'}
               </h3>
               <p className="text-[11px] text-muted-foreground">
-                {p12Data ? 'Modo PAdES X.509 activo' : 'Firma client-side zero-knowledge'}
+                {p12Data ? 'PAdES X.509 ready' : 'Signed in your browser, not on a server'}
               </p>
             </div>
           </div>
@@ -111,22 +108,18 @@ export const SealDialog: React.FC<SealDialogProps> = ({
           <div className="mt-4 space-y-4">
             {/* Digital Certificate Badge or Upload trigger */}
             <div
-              className="flex items-center justify-between rounded-xl border p-3.5"
-              style={{
-                borderColor: p12Data ? 'var(--kc-ok, #43d787)' : 'var(--kc-line)',
-                background: 'var(--kc-bg-2, #080b13)',
-              }}
+              className={`sd-inset flex items-center justify-between rounded-xl border p-3.5 ${p12Data ? 'sd-inset--ok' : ''}`}
             >
               <div className="flex items-center gap-2.5">
                 <Award className={`size-5 ${p12Data ? 'text-emerald-400' : 'text-muted-foreground'}`} />
                 <div>
                   <span className="text-xs font-bold text-foreground">
-                    {p12Data ? `Certificado: ${p12Data.info.commonName}` : 'Firma Digital PAdES (Opcional)'}
+                    {p12Data ? `Certificado: ${p12Data.info.commonName}` : 'PAdES signature (optional)'}
                   </span>
                   <p className="text-[11px] text-muted-foreground">
                     {p12Data
-                      ? `Emisor: ${p12Data.info.issuer} (Válido)`
-                      : 'Adjunta tu certificado .p12 para firma avanzada'}
+                      ? `Issued by ${p12Data.info.issuer}`
+                      : 'Attach your .p12 to sign, not just stamp'}
                   </p>
                 </div>
               </div>
@@ -135,39 +128,36 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 <button
                   type="button"
                   onClick={onOpenCertModal}
-                  className="rounded-lg border px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
-                  style={{ borderColor: 'var(--kc-line-2)' }}
+                  className="rounded-lg border px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 sd-line-2"
                 >
-                  {p12Data ? 'Cambiar' : 'Cargar .p12'}
+                  {p12Data ? 'Cambiar' : 'Load .p12'}
                 </button>
               )}
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">Nombre del firmante / Organización:</label>
+              <label className="text-xs font-semibold text-muted-foreground">Signer's name or organisation</label>
               <input
                 type="text"
                 value={signerName}
                 onChange={(e) => setSignerName(e.target.value)}
-                placeholder="Ej. Carmen García o Tu Nombre"
-                className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                style={{ borderColor: 'var(--kc-line)' }}
+                placeholder="e.g. Carmen García, or your own name"
+                className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary sd-line"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">Correo electrónico (Opcional):</label>
+              <label className="text-xs font-semibold text-muted-foreground">Email (optional)</label>
               <input
                 type="email"
                 value={signerEmail}
                 onChange={(e) => setSignerEmail(e.target.value)}
                 placeholder="firmante@empresa.com"
-                className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-                style={{ borderColor: 'var(--kc-line)' }}
+                className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary sd-line"
               />
             </div>
 
-            <div className="space-y-2 rounded-xl border p-3.5" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}>
+            <div className="space-y-2 rounded-xl border p-3.5 sd-inset">
               {/* Audit Sheet Toggle */}
               <label className="flex cursor-pointer items-start gap-3">
                 <input
@@ -178,16 +168,16 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 />
                 <div>
                   <span className="text-xs font-semibold text-foreground">
-                    Añadir Hoja de Certificado de Auditoría
+                    Add an audit sheet
                   </span>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    Inserta una página final con el sello SHA-256, marcas de tiempo UTC y código QR para verificación instantánea.
+                    A last page with the SHA-256 of the original, the time in UTC and a QR code that opens the verifier.
                   </p>
                 </div>
               </label>
 
               {/* TSA Timestamp Toggle */}
-              <div className="border-t pt-2" style={{ borderColor: 'var(--kc-line)' }}>
+              <div className="border-t pt-2 sd-line">
                 <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="checkbox"
@@ -203,15 +193,15 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                     </span>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {p12Data
-                        ? 'Va dentro de la firma PAdES: solo se envía a la TSA el hash de la firma, y /verify lee la hora certificada.'
-                        : 'Necesita un certificado: el sello de tiempo vive dentro de la firma PAdES.'}
+                        ? 'It goes inside the PAdES signature. Only the hash of the signature is sent to the authority, and /verify reads the certified time back out of it.'
+                        : 'Needs a certificate: the time-stamp lives inside the PAdES signature.'}
                     </p>
                   </div>
                 </label>
               </div>
             </div>
 
-            <div className="rounded-xl border p-3" style={{ borderColor: 'var(--kc-line)' }}>
+            <div className="rounded-xl border p-3 sd-line">
               <span className="text-[11px] font-medium text-muted-foreground">Huella SHA-256 del documento original:</span>
               <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-primary">
                 <span className="truncate">{originalHash}</span>
@@ -225,14 +215,13 @@ export const SealDialog: React.FC<SealDialogProps> = ({
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4" style={{ borderColor: 'var(--kc-line)' }}>
+            <div className="mt-6 flex items-center justify-end gap-2 border-t pt-4 sd-line">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white"
-                style={{ borderColor: 'var(--kc-line)' }}
+                className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-white/5 hover:text-white sd-line"
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 type="button"
@@ -248,7 +237,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 ) : (
                   <>
                     <ShieldCheck className="size-4" />
-                    Sellar documento
+                    Seal the document
                   </>
                 )}
               </button>
@@ -257,20 +246,20 @@ export const SealDialog: React.FC<SealDialogProps> = ({
         ) : (
           /* Sealed Result Step */
           <div className="mt-4 space-y-4">
-            <div className="rounded-xl border p-4" style={{ borderColor: 'var(--kc-ok, #43d787)', background: 'var(--kc-ok-soft, rgba(67, 215, 135, 0.08))' }}>
+            <div className="rounded-xl border p-4 sd-ok">
               <div className="flex items-center gap-2 text-emerald-400">
                 <Check className="size-4 font-bold" />
                 <span className="text-xs font-semibold">
-                  {p12Data ? 'Documento firmado digitalmente con PAdES' : 'Integridad criptográfica sellada'}
+                  {p12Data ? 'Signed with PAdES' : 'Cryptographically sealed'}
                 </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Las firmas y la hoja de auditoría han sido incrustadas localmente en memoria sin tocar ningún servidor externo.
+                The stamps, the audit sheet and the signature were written into the file in this browser. Nothing was uploaded.
               </p>
             </div>
 
             {sealedHash && (
-              <div className="rounded-xl border p-3" style={{ borderColor: 'var(--kc-line)' }}>
+              <div className="rounded-xl border p-3 sd-line">
                 <span className="text-[11px] font-medium text-muted-foreground">Hash SHA-256 resultante:</span>
                 <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-emerald-400">
                   <span className="truncate">{sealedHash}</span>
@@ -292,18 +281,17 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-xs font-bold text-black transition-transform hover:scale-[1.01]"
               >
                 <Download className="size-4" />
-                Descargar PDF Sellado
+                Download the sealed PDF
               </button>
 
               {docDropUrl && (
                 <button
                   type="button"
                   onClick={handleSendToDocDrop}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-white"
-                  style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-white sd-inset"
                 >
                   <Send className="size-3.5 text-primary" />
-                  Enviar copia cifrada vía DocDrop
+                  Send an encrypted copy through DocDrop
                   <ExternalLink className="size-3" />
                 </button>
               )}
@@ -315,7 +303,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 target="_blank"
                 className="text-[11px] text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
               >
-                Probar la herramienta de verificación de firmas →
+                Check this signature in the verifier →
               </a>
             </div>
           </div>

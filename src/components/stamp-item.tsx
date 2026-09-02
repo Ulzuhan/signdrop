@@ -138,7 +138,7 @@ export const StampItemOverlay: React.FC<StampItemProps> = ({
               onDelete();
             }}
             className="rounded p-1 text-muted-foreground hover:bg-red-500/20 hover:text-red-400"
-            title="Eliminar"
+            title="Remove"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -166,12 +166,12 @@ export const StampItemOverlay: React.FC<StampItemProps> = ({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={stamp.content}
-              alt="Firma estampada"
+              alt="Placed signature"
               className="pointer-events-none h-full w-full object-contain"
             />
           ) : (
             <span className="font-sig-caveat text-lg font-bold text-[#003566]">
-              {stamp.content || 'Firma'}
+              {stamp.content || 'Signature'}
             </span>
           )
         ) : stamp.type === 'text' ? (

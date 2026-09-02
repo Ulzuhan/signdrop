@@ -37,18 +37,19 @@
     "test:incremental": "tsx scripts/test-incremental.mjs",
     "postinstall": "node scripts/copy-pdfjs-assets.mjs",
     "test:backchannel": "bash scripts/test-backchannel.sh",
-    "test:acceso": "bash scripts/test-acceso.sh"
+    "test:acceso": "bash scripts/test-acceso.sh",
+    "test:csp": "bash scripts/test-csp.sh"
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^1.28.0",
-    "next": "^15.2.0",
+    "next": "^16.3.4",
     "node-forge": "^1.4.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "qrcode": "^1.5.4",
-    "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "signature_pad": "^5.0.4",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2"
@@ -61,7 +62,7 @@
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "eslint": "^9.21.0",
-    "eslint-config-next": "^15.2.0",
+    "eslint-config-next": "^16.3.4",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.9",
     "tsx": "^4.23.13",

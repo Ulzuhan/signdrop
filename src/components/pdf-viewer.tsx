@@ -59,7 +59,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
 
   // Modals state
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-  const [signatureModalTitle, setSignatureModalTitle] = useState('Crear firma');
+  const [signatureModalTitle, setSignatureModalTitle] = useState('Create a signature');
   const [pendingStampType, setPendingStampType] = useState<'signature' | 'initials'>('signature');
   const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
   const [isSealing, setIsSealing] = useState(false);
@@ -80,7 +80,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
       })
       .catch((err) => {
         console.error('Error loading PDF:', err);
-        toast.error('Error al inicializar el visor del PDF');
+        toast.error('The PDF viewer could not start');
       });
 
     return () => {
@@ -128,13 +128,13 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
 
   const handleOpenSignatureModal = (type: 'signature' | 'initials') => {
     setPendingStampType(type);
-    setSignatureModalTitle(type === 'signature' ? 'Crear firma' : 'Crear iniciales');
+    setSignatureModalTitle(type === 'signature' ? 'Create a signature' : 'Create initials');
     setIsSignatureModalOpen(true);
   };
 
   const handleSaveSignature = (dataUrl: string) => {
     addStamp(pendingStampType, dataUrl);
-    toast.success(pendingStampType === 'signature' ? 'Firma añadida al documento.' : 'Iniciales añadidas.');
+    toast.success(pendingStampType === 'signature' ? 'Signature placed.' : 'Initials placed.');
   };
 
   const handleUpdateStamp = (id: string, updated: Partial<StampItem>) => {
@@ -203,7 +203,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
                 return token.tokenDer;
               } catch (tsaErr) {
                 console.warn('TSA unavailable; signing without a time-stamp:', tsaErr);
-                toast.warning('La TSA no respondió: el documento se firma sin sello de tiempo.');
+                toast.warning('The time-stamping authority did not answer. Signing without a time-stamp.');
                 return null;
               }
             }
@@ -240,15 +240,15 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
       if (result.isPadesSigned) {
         toast.success(
           stamped.genTime
-            ? `Firmado con PAdES y sello de tiempo certificado (${stamped.genTime.replace('T', ' ').slice(0, 19)} UTC).`
-            : 'Documento firmado digitalmente con PAdES (X.509).'
+            ? `Signed with PAdES, time-stamped ${stamped.genTime.replace('T', ' ').slice(0, 19)} UTC by the authority.`
+            : 'Signed with PAdES (X.509).'
         );
       } else {
-        toast.success('Documento estampado. Sin certificado no hay firma verificable.');
+        toast.success('Stamped. Without a certificate there is no signature anybody can verify.');
       }
     } catch (err) {
       console.error('Error during sealing:', err);
-      toast.error(err instanceof Error && err.message ? `No se pudo firmar: ${err.message}` : 'Error al sellar el PDF.');
+      toast.error(err instanceof Error && err.message ? `Could not sign: ${err.message}` : 'The document could not be sealed.');
     } finally {
       setIsSealing(false);
     }
@@ -260,19 +260,14 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
     <div className="flex h-full w-full flex-col">
       {/* Top Floating Control Bar */}
       <div
-        className="sticky top-14 z-30 flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 backdrop-blur"
-        style={{
-          borderColor: 'var(--kc-line)',
-          background: 'color-mix(in oklab, var(--kc-bg) 85%, transparent)',
-        }}
+        className="sd-toolbar sticky top-14 z-30 flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5 backdrop-blur"
       >
         {/* Document Info & Reset */}
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onReset}
-            className="flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
-            style={{ borderColor: 'var(--kc-line)' }}
+            className="flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-white sd-line"
             title="Cargar otro documento"
           >
             <RotateCcw className="size-3.5" />
@@ -284,14 +279,14 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         </div>
 
         {/* Stamps & Tools Toolbar */}
-        <div className="flex items-center gap-1 rounded-xl border p-1" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
+        <div className="flex items-center gap-1 rounded-xl border p-1 sd-panel">
           <button
             type="button"
             onClick={() => handleOpenSignatureModal('signature')}
             className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary hover:text-black"
           >
             <PenTool className="size-3.5" />
-            <span>Firma</span>
+            <span>Signature</span>
           </button>
 
           <button
@@ -337,10 +332,10 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
             type="button"
             onClick={() => setIsTemplateModalOpen(true)}
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
-            title="Gestor de Plantillas"
+            title="Templates"
           >
             <Layers className="size-3.5 text-primary" />
-            <span className="hidden lg:inline">Plantillas</span>
+            <span className="hidden lg:inline">Templates</span>
           </button>
 
           {/* Certificate Trigger */}
@@ -364,7 +359,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         {/* Zoom & Seal Action */}
         <div className="flex items-center gap-2">
           {/* Zoom controls */}
-          <div className="hidden items-center gap-1 rounded-xl border px-1.5 py-1 sm:flex" style={{ borderColor: 'var(--kc-line)' }}>
+          <div className="hidden items-center gap-1 rounded-xl border px-1.5 py-1 sm:flex sd-line">
             <button
               type="button"
               onClick={() => setScale((s) => Math.max(0.6, s - 0.2))}
@@ -389,21 +384,20 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
             className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-1.5 text-xs font-bold text-black shadow-md transition-opacity hover:opacity-90"
           >
             <ShieldCheck className="size-4" />
-            <span>Sellar y Descargar</span>
+            <span>Seal and download</span>
           </button>
         </div>
       </div>
 
       {/* Main Workspace Area: Sidebar & PDF Canvas */}
-      <div className="flex flex-1 overflow-hidden" style={{ background: 'var(--kc-bg, #05070d)' }}>
+      <div className="flex flex-1 overflow-hidden sd-ground">
         {/* Page Thumbnails Sidebar */}
         {numPages > 1 && (
           <aside
-            className="hidden w-28 flex-col items-center gap-3 overflow-y-auto border-r p-3 sm:flex"
-            style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}
+            className="hidden w-28 flex-col items-center gap-3 overflow-y-auto border-r p-3 sm:flex sd-inset"
           >
             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Páginas ({numPages})
+              Pages ({numPages})
             </span>
             {Array.from({ length: numPages }).map((_, idx) => {
               const pNum = idx + 1;
@@ -419,7 +413,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
                       : 'border-[var(--kc-line)] bg-background/50 hover:border-muted-foreground/30'
                   }`}
                 >
-                  <span className="text-[11px] font-medium text-foreground">Pág. {pNum}</span>
+                  <span className="text-[11px] font-medium text-foreground">p. {pNum}</span>
                   {hasStamps && (
                     <span className="mt-1 flex items-center gap-1 rounded-full bg-primary/20 px-1.5 py-0.5 text-[9px] font-semibold text-primary">
                       {stamps.filter((s) => s.page === pNum).length} marcas
@@ -437,7 +431,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
           onClick={() => setSelectedStampId(null)}
         >
           {/* Pagination bar */}
-          <div className="mb-4 flex items-center gap-3 rounded-full border px-4 py-1.5 shadow-sm" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
+          <div className="mb-4 flex items-center gap-3 rounded-full border px-4 py-1.5 shadow-sm sd-panel">
             <button
               type="button"
               disabled={currentPage <= 1}
@@ -447,7 +441,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
               <ChevronLeft className="size-4" />
             </button>
             <span className="text-xs font-semibold text-foreground">
-              Página {currentPage} de {numPages}
+              Page {currentPage} of {numPages}
             </span>
             <button
               type="button"

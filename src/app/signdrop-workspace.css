@@ -231,3 +231,67 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ── The house tokens, as classes ──
+   Eighty-one copies of `style={{ borderColor: 'var(--kc-line)' }}` used to be
+   spread across ten files. They are the same four declarations written out
+   again and again, and every one of them was an inline style the content
+   policy had to allow. Here once, applied by name.
+
+   What is deliberately NOT here is anything computed: a stamp's position on
+   the page, the size of a rendered page, the colour somebody picked for their
+   ink. Those are values that only exist at run time and belong in a `style`
+   attribute; turning them into classes would mean generating CSS per stamp. */
+.sd-line {
+  border-color: var(--kc-line);
+}
+
+.sd-line-2 {
+  border-color: var(--kc-line-2);
+}
+
+.sd-display {
+  font-family: var(--kc-font-display);
+}
+
+.sd-title {
+  color: var(--kc-text-1);
+  font-family: var(--kc-font-display);
+}
+
+.sd-panel {
+  border-color: var(--kc-line);
+  background: var(--kc-panel, #0c1019);
+}
+
+.sd-inset {
+  border-color: var(--kc-line);
+  background: var(--kc-bg-2, #080b13);
+}
+
+.sd-inset--ok {
+  border-color: var(--kc-ok, #43d787);
+}
+
+.sd-ok {
+  border-color: var(--kc-ok, #43d787);
+  background: var(--kc-ok-soft, rgba(67, 215, 135, 0.06));
+}
+
+.sd-warn {
+  border-color: var(--kc-warn, #f2b544);
+  background: rgba(242, 181, 68, 0.05);
+}
+
+.sd-ground {
+  background: var(--kc-bg, #05070d);
+}
+
+.sd-toolbar {
+  border-color: var(--kc-line);
+  background: color-mix(in oklab, var(--kc-bg) 85%, transparent);
+}
+
+.sd-no-touch {
+  touch-action: none;
+}

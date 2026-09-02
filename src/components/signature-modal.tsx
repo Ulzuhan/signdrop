@@ -14,9 +14,9 @@ interface SignatureModalProps {
 }
 
 const INK_COLORS = [
-  { name: 'Azul clásico', value: '#003566', border: '#003566' },
-  { name: 'Negro tinta', value: '#0f172a', border: '#0f172a' },
-  { name: 'Azul marino', value: '#1d3557', border: '#1d3557' },
+  { name: 'Classic blue', value: '#003566', border: '#003566' },
+  { name: 'Ink black', value: '#0f172a', border: '#0f172a' },
+  { name: 'Navy', value: '#1d3557', border: '#1d3557' },
 ];
 
 const FONTS = [
@@ -28,7 +28,7 @@ const FONTS = [
 
 export const SignatureModal: React.FC<SignatureModalProps> = ({
   isOpen,
-  title = 'Crear firma',
+  title = 'Create a signature',
   onClose,
   onSave,
 }) => {
@@ -158,15 +158,12 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
       <div
-        className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl"
-        style={{
-          borderColor: 'var(--kc-line)',
-          background: 'var(--kc-panel, #0c1019)',
-        }}
+        className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl sd-panel"
+
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b pb-4" style={{ borderColor: 'var(--kc-line)' }}>
-          <h3 className="text-lg font-semibold tracking-tight" style={{ color: 'var(--kc-text-1)', fontFamily: 'var(--kc-font-display)' }}>
+        <div className="flex items-center justify-between border-b pb-4 sd-line">
+          <h3 className="text-lg font-semibold tracking-tight sd-title">
             {title}
           </h3>
           <button
@@ -178,7 +175,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="mt-4 flex rounded-xl border p-1" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}>
+        <div className="mt-4 flex rounded-xl border p-1 sd-inset">
           <button
             onClick={() => setTab('draw')}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-xs font-medium transition-all ${
@@ -245,8 +242,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                 <button
                   type="button"
                   onClick={handleClear}
-                  className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-500/40 hover:text-red-400"
-                  style={{ borderColor: 'var(--kc-line)' }}
+                  className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-red-500/40 hover:text-red-400 sd-line"
                 >
                   <Trash2 className="size-3.5" />
                   Limpiar
@@ -263,9 +259,8 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                   type="text"
                   value={typedText}
                   onChange={(e) => setTypedText(e.target.value)}
-                  placeholder="Ej. Carmen García"
-                  className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                  style={{ borderColor: 'var(--kc-line)' }}
+                  placeholder="e.g. Carmen García"
+                  className="mt-1.5 w-full rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary sd-line"
                 />
               </div>
 
@@ -293,7 +288,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
 
           {tab === 'upload' && (
             <div className="space-y-4">
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:border-primary/50" style={{ borderColor: 'var(--kc-line)' }}>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-colors hover:border-primary/50 sd-line">
                 <Upload className="size-8 text-muted-foreground" />
                 <span className="mt-2 text-xs font-medium text-foreground">
                   Selecciona una foto o escaneo de tu firma
@@ -308,7 +303,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               </label>
 
               {uploadedRaw && (
-                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--kc-line)' }}>
+                <div className="rounded-xl border p-3 sd-line">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="size-3.5 text-primary" />
@@ -325,11 +320,11 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                     className="mt-2 w-full accent-primary"
                   />
                   {processedUpload && (
-                    <div className="mt-3 flex h-24 items-center justify-center rounded-lg border bg-[repeating-conic-gradient(#1a202c_0%_25%,#10151f_0%_50%)] bg-[length:16px_16px] p-2" style={{ borderColor: 'var(--kc-line)' }}>
+                    <div className="mt-3 flex h-24 items-center justify-center rounded-lg border bg-[repeating-conic-gradient(#1a202c_0%_25%,#10151f_0%_50%)] bg-[length:16px_16px] p-2 sd-line">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={processedUpload}
-                        alt="Previsualización transparente"
+                        alt="Transparent preview"
                         className="max-h-full object-contain"
                       />
                     </div>
@@ -341,7 +336,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="mt-6 flex items-center justify-between border-t pt-4" style={{ borderColor: 'var(--kc-line)' }}>
+        <div className="mt-6 flex items-center justify-between border-t pt-4 sd-line">
           <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
             <input
               type="checkbox"
@@ -356,10 +351,9 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
-              style={{ borderColor: 'var(--kc-line)' }}
+              className="rounded-xl border px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-white sd-line"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="button"

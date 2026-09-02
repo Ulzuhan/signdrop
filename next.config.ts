@@ -10,6 +10,16 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  /**
+   * Where the project starts, said explicitly.
+   *
+   * Turbopack otherwise walks up looking for a lockfile and can settle on a
+   * directory above the repository, which changes what it resolves and what
+   * it watches. The other five services pin it; so does this one.
+   */
+  turbopack: {
+    root: import.meta.dirname,
+  },
   poweredByHeader: false,
   output: "standalone",
   outputFileTracingRoot: import.meta.dirname,
