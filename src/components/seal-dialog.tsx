@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ShieldCheck, Download, Send, Check, Copy, ExternalLink } from 'lucide-react';
-import { AuditTrailData } from '@/lib/types';
+import { X, ShieldCheck, Download, Send, Check, Copy, ExternalLink, Award, Clock, FileKey } from 'lucide-react';
+import { ParsedPkcs12 } from '@/lib/pades-signer';
 import { toast } from 'sonner';
 
 interface SealDialogProps {
@@ -13,11 +13,14 @@ interface SealDialogProps {
   documentName: string;
   sealedPdfBlobUrl?: string;
   docDropUrl?: string;
+  p12Data?: ParsedPkcs12 | null;
+  onOpenCertModal?: () => void;
   onClose: () => void;
   onConfirmSeal: (data: {
     signerName: string;
     signerEmail?: string;
     includeAuditSheet: boolean;
+    useTsaTimestamp: boolean;
   }) => void;
 }
 
@@ -29,12 +32,15 @@ export const SealDialog: React.FC<SealDialogProps> = ({
   documentName,
   sealedPdfBlobUrl,
   docDropUrl = 'https://docdrop.kaicorplabs.com',
+  p12Data,
+  onOpenCertModal,
   onClose,
   onConfirmSeal,
 }) => {
-  const [signerName, setSignerName] = useState('');
+  const [signerName, setSignerName] = useState(p12Data?.info.commonName || '');
   const [signerEmail, setSignerEmail] = useState('');
   const [includeAuditSheet, setIncludeAuditSheet] = useState(true);
+  const [useTsaTimestamp, setUseTsaTimestamp] = useState(true);
   const [copiedOriginal, setCopiedOriginal] = useState(false);
   const [copiedSealed, setCopiedSealed] = useState(false);
 
@@ -71,7 +77,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
       <div
-        className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border bg-card p-6 shadow-2xl"
         style={{
           borderColor: 'var(--kc-line)',
           background: 'var(--kc-panel, #0c1019)',
@@ -83,9 +89,14 @@ export const SealDialog: React.FC<SealDialogProps> = ({
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ShieldCheck className="size-5" />
             </div>
-            <h3 className="text-lg font-bold tracking-tight" style={{ color: 'var(--kc-text-1)', fontFamily: 'var(--kc-font-display)' }}>
-              {sealedPdfBlobUrl ? 'Documento Sellado con Éxito' : 'Sellar y Certificar Documento'}
-            </h3>
+            <div>
+              <h3 className="text-lg font-bold tracking-tight text-foreground" style={{ fontFamily: 'var(--kc-font-display)' }}>
+                {sealedPdfBlobUrl ? 'Documento Sellado con Éxito' : 'Sellar y Certificar Documento'}
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                {p12Data ? 'Modo PAdES X.509 activo' : 'Firma client-side zero-knowledge'}
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -98,6 +109,40 @@ export const SealDialog: React.FC<SealDialogProps> = ({
         {!sealedPdfBlobUrl ? (
           /* Form Configuration Step */
           <div className="mt-4 space-y-4">
+            {/* Digital Certificate Badge or Upload trigger */}
+            <div
+              className="flex items-center justify-between rounded-xl border p-3.5"
+              style={{
+                borderColor: p12Data ? 'var(--kc-ok, #43d787)' : 'var(--kc-line)',
+                background: 'var(--kc-bg-2, #080b13)',
+              }}
+            >
+              <div className="flex items-center gap-2.5">
+                <Award className={`size-5 ${p12Data ? 'text-emerald-400' : 'text-muted-foreground'}`} />
+                <div>
+                  <span className="text-xs font-bold text-foreground">
+                    {p12Data ? `Certificado: ${p12Data.info.commonName}` : 'Firma Digital PAdES (Opcional)'}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground">
+                    {p12Data
+                      ? `Emisor: ${p12Data.info.issuer} (Válido)`
+                      : 'Adjunta tu certificado .p12 para firma avanzada'}
+                  </p>
+                </div>
+              </div>
+
+              {onOpenCertModal && (
+                <button
+                  type="button"
+                  onClick={onOpenCertModal}
+                  className="rounded-lg border px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                  style={{ borderColor: 'var(--kc-line-2)' }}
+                >
+                  {p12Data ? 'Cambiar' : 'Cargar .p12'}
+                </button>
+              )}
+            </div>
+
             <div>
               <label className="text-xs font-semibold text-muted-foreground">Nombre del firmante / Organización:</label>
               <input
@@ -122,7 +167,8 @@ export const SealDialog: React.FC<SealDialogProps> = ({
               />
             </div>
 
-            <div className="rounded-xl border p-3.5" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}>
+            <div className="space-y-2 rounded-xl border p-3.5" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-bg-2, #080b13)' }}>
+              {/* Audit Sheet Toggle */}
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   type="checkbox"
@@ -135,10 +181,31 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                     Añadir Hoja de Certificado de Auditoría
                   </span>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    Inserta una página final con el sello criptográfico SHA-256, marcas de tiempo UTC y código QR para verificación instantánea.
+                    Inserta una página final con el sello SHA-256, marcas de tiempo UTC y código QR para verificación instantánea.
                   </p>
                 </div>
               </label>
+
+              {/* TSA Timestamp Toggle */}
+              <div className="border-t pt-2" style={{ borderColor: 'var(--kc-line)' }}>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={useTsaTimestamp}
+                    onChange={(e) => setUseTsaTimestamp(e.target.checked)}
+                    className="mt-0.5 rounded accent-primary"
+                  />
+                  <div>
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Clock className="size-3 text-primary" />
+                      Sellado de Tiempo Cualificado TSA (RFC 3161)
+                    </span>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Solicita un timestamp oficial a FreeTSA (zero-knowledge: solo se envía el hash de 32 bytes).
+                    </p>
+                  </div>
+                </label>
+              </div>
             </div>
 
             <div className="rounded-xl border p-3" style={{ borderColor: 'var(--kc-line)' }}>
@@ -167,7 +234,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
               <button
                 type="button"
                 disabled={isSealing}
-                onClick={() => onConfirmSeal({ signerName, signerEmail, includeAuditSheet })}
+                onClick={() => onConfirmSeal({ signerName, signerEmail, includeAuditSheet, useTsaTimestamp })}
                 className="flex items-center gap-1.5 rounded-xl bg-primary px-5 py-2 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {isSealing ? (
@@ -190,7 +257,9 @@ export const SealDialog: React.FC<SealDialogProps> = ({
             <div className="rounded-xl border p-4" style={{ borderColor: 'var(--kc-ok, #43d787)', background: 'var(--kc-ok-soft, rgba(67, 215, 135, 0.08))' }}>
               <div className="flex items-center gap-2 text-emerald-400">
                 <Check className="size-4 font-bold" />
-                <span className="text-xs font-semibold">Integridad criptográfica sellada</span>
+                <span className="text-xs font-semibold">
+                  {p12Data ? 'Documento firmado digitalmente con PAdES' : 'Integridad criptográfica sellada'}
+                </span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 Las firmas y la hoja de auditoría han sido incrustadas localmente en memoria sin tocar ningún servidor externo.

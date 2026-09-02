@@ -13,15 +13,21 @@ import {
   ShieldCheck,
   RotateCcw,
   User,
-  Plus,
+  Layers,
+  Award,
 } from 'lucide-react';
 import { StampItem, PdfDocumentInfo, AuditTrailData } from '@/lib/types';
+import { DocumentTemplate } from '@/lib/pades-types';
 import { loadPdfDocument, renderPdfPage } from '@/lib/pdf-engine';
 import { sealPdfDocument } from '@/lib/pdf-sealer';
 import { generateRandomId } from '@/lib/crypto';
+import { requestTsaTimestamp } from '@/lib/tsa-client';
+import { ParsedPkcs12 } from '@/lib/pades-signer';
 import { StampItemOverlay } from './stamp-item';
 import { SignatureModal } from './signature-modal';
 import { SealDialog } from './seal-dialog';
+import { CertificateModal } from './certificate-modal';
+import { TemplateManagerModal } from './template-manager-modal';
 import { toast } from 'sonner';
 
 interface PdfViewerProps {
@@ -44,6 +50,11 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
   const [stamps, setStamps] = useState<StampItem[]>([]);
   const [selectedStampId, setSelectedStampId] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState<{ width: number; height: number }>({ width: 600, height: 800 });
+
+  // Certificate and Template state
+  const [activeCertificate, setActiveCertificate] = useState<ParsedPkcs12 | null>(null);
+  const [isCertModalOpen, setIsCertModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
 
   // Modals state
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -145,23 +156,53 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
     setSelectedStampId(duplicated.id);
   };
 
-  // Perform PDF Sealing
+  // Apply template fields to the active document
+  const handleApplyTemplate = (template: DocumentTemplate) => {
+    const newStamps: StampItem[] = template.fields.map((f) => ({
+      id: generateRandomId(f.type),
+      type: f.type,
+      page: Math.min(f.page, numPages),
+      x: f.x,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      fontSize: f.fontSize || 14,
+      content: f.type === 'date' ? new Date().toISOString().split('T')[0] : f.label || '',
+      checked: false,
+    }));
+
+    setStamps((prev) => [...prev, ...newStamps]);
+  };
+
+  // Perform PDF Sealing (with optional PAdES and TSA)
   const handleSealDocument = async ({
     signerName,
     signerEmail,
     includeAuditSheet,
+    useTsaTimestamp,
   }: {
     signerName: string;
     signerEmail?: string;
     includeAuditSheet: boolean;
+    useTsaTimestamp: boolean;
   }) => {
     setIsSealing(true);
     try {
+      let tsaTimestampStr: string | null = null;
+      if (useTsaTimestamp) {
+        try {
+          const tsaRes = await requestTsaTimestamp(documentInfo.originalHash);
+          tsaTimestampStr = tsaRes.timestamp.replace('T', ' ').substring(0, 19);
+        } catch (tsaErr) {
+          console.warn('TSA request fallback to local timestamp:', tsaErr);
+        }
+      }
+
       const auditData: AuditTrailData = {
         documentName: documentInfo.fileName,
         originalHash: documentInfo.originalHash,
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        signerName: signerName || 'Usuario Local',
+        timestamp: tsaTimestampStr || new Date().toISOString().replace('T', ' ').substring(0, 19),
+        signerName: activeCertificate?.info.commonName || signerName || 'Usuario Local',
         signerEmail: signerEmail,
         signerId: generateRandomId('seal'),
         stampsCount: stamps.length,
@@ -173,13 +214,20 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         pageDimensions: Array.from({ length: numPages }, () => ({ width: 595, height: 842 })),
         includeAuditSheet,
         auditData,
+        p12Data: activeCertificate,
+        tsaTimestamp: tsaTimestampStr,
       });
 
       const blob = new Blob([result.sealedBytes as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setSealedPdfBlobUrl(url);
       setSealedHash(result.sealedHash);
-      toast.success('Documento sellado criptográficamente.');
+
+      if (result.isPadesSigned) {
+        toast.success('Documento firmado digitalmente con PAdES (X.509).');
+      } else {
+        toast.success('Documento sellado criptográficamente.');
+      }
     } catch (err) {
       console.error('Error during sealing:', err);
       toast.error('Error al sellar el PDF.');
@@ -217,7 +265,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
           </span>
         </div>
 
-        {/* Stamps Tools Toolbar */}
+        {/* Stamps & Tools Toolbar */}
         <div className="flex items-center gap-1 rounded-xl border p-1" style={{ borderColor: 'var(--kc-line)', background: 'var(--kc-panel, #0c1019)' }}>
           <button
             type="button"
@@ -262,6 +310,36 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
           >
             <CheckSquare className="size-3.5" />
             <span className="hidden md:inline">Casilla</span>
+          </button>
+
+          <span className="mx-1 h-4 w-px bg-white/10" />
+
+          {/* Templates Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsTemplateModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
+            title="Gestor de Plantillas"
+          >
+            <Layers className="size-3.5 text-primary" />
+            <span className="hidden lg:inline">Plantillas</span>
+          </button>
+
+          {/* Certificate Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsCertModalOpen(true)}
+            className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${
+              activeCertificate
+                ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
+                : 'text-muted-foreground hover:bg-white/5 hover:text-white'
+            }`}
+            title="Certificado Digital X.509 (PAdES)"
+          >
+            <Award className="size-3.5" />
+            <span className="hidden lg:inline">
+              {activeCertificate ? activeCertificate.info.commonName : 'X.509'}
+            </span>
           </button>
         </div>
 
@@ -366,7 +444,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
           {/* Page Container */}
           <div className="sig-page-wrapper relative">
             <canvas ref={canvasRef} className="block" />
-            
+
             {/* Interactive Overlay Layer */}
             <div
               ref={overlayRef}
@@ -402,6 +480,20 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         onSave={handleSaveSignature}
       />
 
+      <CertificateModal
+        isOpen={isCertModalOpen}
+        activeCertificate={activeCertificate}
+        onClose={() => setIsCertModalOpen(false)}
+        onSelectCertificate={(cert) => setActiveCertificate(cert)}
+      />
+
+      <TemplateManagerModal
+        isOpen={isTemplateModalOpen}
+        currentStamps={stamps}
+        onClose={() => setIsTemplateModalOpen(false)}
+        onApplyTemplate={handleApplyTemplate}
+      />
+
       <SealDialog
         isOpen={isSealDialogOpen}
         isSealing={isSealing}
@@ -410,6 +502,8 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
         documentName={documentInfo.fileName}
         sealedPdfBlobUrl={sealedPdfBlobUrl}
         docDropUrl={docDropUrl}
+        p12Data={activeCertificate}
+        onOpenCertModal={() => setIsCertModalOpen(true)}
         onClose={() => setIsSealDialogOpen(false)}
         onConfirmSeal={handleSealDocument}
       />

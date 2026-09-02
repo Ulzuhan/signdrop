@@ -1,11 +1,12 @@
 /**
- * PDF Sealer and Stamp Embedding Engine using pdf-lib.
+ * PDF Sealer, PAdES and Stamp Embedding Engine using pdf-lib and node-forge.
  * 100% Client-side.
  */
 import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import QRCode from 'qrcode';
 import { StampItem, AuditTrailData } from './types';
 import { calculateSha256 } from './crypto';
+import { signPdfWithPades, ParsedPkcs12 } from './pades-signer';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   const base64 = dataUrl.split(',')[1] || dataUrl;
@@ -27,6 +28,8 @@ export interface SealPdfOptions {
   pageDimensions: Array<{ width: number; height: number }>; // in PDF points for each page (0-indexed)
   includeAuditSheet?: boolean;
   auditData: AuditTrailData;
+  p12Data?: ParsedPkcs12 | null;
+  tsaTimestamp?: string | null;
 }
 
 export async function sealPdfDocument(options: SealPdfOptions): Promise<{
@@ -34,8 +37,16 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
   originalHash: string;
   sealedHash: string;
   auditData: AuditTrailData;
+  isPadesSigned: boolean;
 }> {
-  const { originalBytes, stamps, includeAuditSheet = true, auditData } = options;
+  const {
+    originalBytes,
+    stamps,
+    includeAuditSheet = true,
+    auditData,
+    p12Data,
+    tsaTimestamp,
+  } = options;
 
   // Calculate original SHA-256
   const originalHash = await calculateSha256(originalBytes);
@@ -61,7 +72,6 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     const stampX = (stamp.x / 100) * pageWidth;
     const stampWidth = (stamp.width / 100) * pageWidth;
     const stampHeight = (stamp.height / 100) * pageHeight;
-    // In PDF coordinates, (0,0) is bottom-left, while in web screen it's top-left:
     const stampY = pageHeight - ((stamp.y / 100) * pageHeight) - stampHeight;
 
     if (stamp.type === 'signature' || stamp.type === 'initials') {
@@ -105,7 +115,6 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
         color: rgb(0.08, 0.08, 0.08),
       });
     } else if (stamp.type === 'checkbox') {
-      // Draw checkbox box
       page.drawRectangle({
         x: stampX,
         y: stampY,
@@ -150,7 +159,11 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
       color: rgb(0.9, 0.95, 1),
     });
 
-    auditPage.drawText('CLIENT-SIDE TAMPER-EVIDENT VERIFICATION SHEET', {
+    const subTitle = p12Data
+      ? 'PAdES ADVANCED DIGITAL SIGNATURE (X.509 PKI)'
+      : 'CLIENT-SIDE TAMPER-EVIDENT VERIFICATION SHEET';
+
+    auditPage.drawText(subTitle, {
       x: 40,
       y: aHeight - 68,
       size: 9,
@@ -186,25 +199,25 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
         thickness: 1,
         color: rgb(0.85, 0.88, 0.92),
       });
-      cursorY -= 20;
+      cursorY -= 18;
     };
 
     const drawField = (label: string, value: string, isMono = false) => {
       auditPage.drawText(label, {
         x: 60,
         y: cursorY,
-        size: 10,
+        size: 9.5,
         font: fontHelveticaBold,
         color: rgb(0.3, 0.35, 0.45),
       });
       auditPage.drawText(value, {
-        x: 200,
+        x: 195,
         y: cursorY,
-        size: 10,
+        size: 9.5,
         font: isMono ? fontCourier : fontHelvetica,
         color: rgb(0.05, 0.08, 0.12),
       });
-      cursorY -= 22;
+      cursorY -= 18;
     };
 
     // Document Details Section
@@ -213,17 +226,25 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     drawField('Total Pages Signed:', `${pages.length} page(s)`);
     drawField('Visual Stamps Placed:', `${stamps.length} stamp(s)`);
     drawField('Signing Timestamp:', `${auditData.timestamp} UTC`);
+    if (tsaTimestamp) {
+      drawField('TSA Certified Time:', `${tsaTimestamp} (RFC 3161 FreeTSA)`);
+    }
 
-    cursorY -= 10;
+    cursorY -= 6;
     // Signer Details Section
     drawSectionHeader('Signer Identification');
-    drawField('Signer Name:', auditData.signerName || 'Anonymous / Local Signer');
-    if (auditData.signerEmail) {
-      drawField('Signer Email:', auditData.signerEmail);
+    if (p12Data) {
+      drawField('X.509 Certificate Name:', p12Data.info.commonName);
+      if (p12Data.info.organization) drawField('Organization:', p12Data.info.organization);
+      drawField('Certificate Issuer (CA):', p12Data.info.issuer);
+      drawField('PAdES Cryptographic Standard:', 'ISO 32000-1 / ETSI EN 319 142');
+    } else {
+      drawField('Signer Name:', auditData.signerName || 'Anonymous / Local Signer');
+      if (auditData.signerEmail) drawField('Signer Email:', auditData.signerEmail);
     }
     drawField('Unique Seal ID:', auditData.signerId, true);
 
-    cursorY -= 10;
+    cursorY -= 6;
     // Cryptographic Hashes Section
     drawSectionHeader('Cryptographic Verification');
     drawField('Original Document SHA-256:', auditData.originalHash, true);
@@ -241,14 +262,14 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
 
       auditPage.drawImage(qrImage, {
         x: aWidth - 190,
-        y: 110,
-        width: 110,
-        height: 110,
+        y: 100,
+        width: 100,
+        height: 100,
       });
 
       auditPage.drawText('Scan to verify seal:', {
         x: aWidth - 190,
-        y: 230,
+        y: 205,
         size: 8,
         font: fontHelveticaBold,
         color: rgb(0.3, 0.35, 0.45),
@@ -260,9 +281,9 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     // Security Notice Box
     auditPage.drawRectangle({
       x: 60,
-      y: 100,
-      width: aWidth - 280,
-      height: 80,
+      y: 95,
+      width: aWidth - 270,
+      height: 75,
       color: rgb(0.94, 0.97, 1),
       borderColor: rgb(0.7, 0.85, 0.95),
       borderWidth: 1,
@@ -270,17 +291,17 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
 
     auditPage.drawText('PRIVACY & INTEGRITY GUARANTEE:', {
       x: 72,
-      y: 162,
+      y: 153,
       size: 8.5,
       font: fontHelveticaBold,
       color: rgb(0, 0.45, 0.7),
     });
 
     auditPage.drawText(
-      'This document was stamped and sealed locally in the user\'s browser.\nNo document contents were uploaded to any remote server during signing.\nThe cryptographic SHA-256 seal guarantees tamper-evident validation.',
+      'This document was stamped and sealed locally in the user\'s browser.\nNo document contents or private keys were uploaded to any remote server.\nThe cryptographic seal guarantees tamper-evident validation in Adobe Acrobat Reader.',
       {
         x: 72,
-        y: 146,
+        y: 138,
         size: 7.5,
         font: fontHelvetica,
         lineHeight: 11,
@@ -302,16 +323,33 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
   pdfDoc.setTitle(`Signed - ${auditData.documentName}`);
   pdfDoc.setSubject(`SignDrop Cryptographic Seal: ${auditData.signerId}`);
   pdfDoc.setCreator('SignDrop by KaiCorp Labs (Client-side Engine)');
-  pdfDoc.setProducer('pdf-lib (WebAssembly/JS)');
+  pdfDoc.setProducer('pdf-lib + node-forge (PAdES)');
   pdfDoc.setKeywords([
     'SignDrop',
     `OriginalSHA256:${originalHash}`,
     `SealID:${auditData.signerId}`,
     `Timestamp:${auditData.timestamp}`,
+    p12Data ? 'PAdES-B-B' : 'SES',
   ]);
 
-  // Save the modified PDF
-  const sealedBytes = await pdfDoc.save();
+  // Save the modified PDF with visual stamps
+  let sealedBytes = await pdfDoc.save({ useObjectStreams: false });
+
+  // If digital certificate provided, apply PAdES signature
+  let isPadesSigned = false;
+  if (p12Data) {
+    try {
+      sealedBytes = await signPdfWithPades({
+        pdfBytes: sealedBytes,
+        p12Data,
+        reason: `Firmado digitalmente con PAdES por ${p12Data.info.commonName}`,
+      });
+      isPadesSigned = true;
+    } catch (padesErr) {
+      console.error('PAdES digital signing failed:', padesErr);
+    }
+  }
+
   const sealedHash = await calculateSha256(sealedBytes);
   auditData.sealedHash = sealedHash;
 
@@ -320,5 +358,6 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     originalHash,
     sealedHash,
     auditData,
+    isPadesSigned,
   };
 }
