@@ -119,19 +119,22 @@
   color: #ff6b6b;
 }
 
-/* ── Typography & Handwriting Font Classes ── */
+/* ── Typography & Handwriting Font Classes ──
+   The families come from next/font in layout.tsx, which self-hosts them and
+   generates a name nobody can guess; these variables are how anything else
+   refers to them, the signature canvas included. */
 .font-sig-caveat {
-  font-family: 'Caveat', cursive, sans-serif;
+  font-family: var(--font-sig-caveat), cursive, sans-serif;
 }
 
 .font-sig-dancing {
-  font-family: 'Dancing Script', cursive, sans-serif;
+  font-family: var(--font-sig-dancing), cursive, sans-serif;
 }
 
 .font-sig-vibes {
-  font-family: 'Great Vibes', cursive, sans-serif;
+  font-family: var(--font-sig-vibes), cursive, sans-serif;
 }
 
 .font-sig-trad {
-  font-family: 'Playwrite US Trad', cursive, sans-serif;
+  font-family: var(--font-sig-trad), cursive, sans-serif;
 }

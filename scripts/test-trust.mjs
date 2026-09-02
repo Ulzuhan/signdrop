@@ -15,7 +15,7 @@
 import forge from 'node-forge';
 import assert from 'node:assert/strict';
 import { extractAnchors, stripNamespaces } from './update-trust-store.mjs';
-import { judgeTrust, forSignatures } from '../src/lib/trust/store.ts';
+import { judgeTrust, forSignatures, forTimestamps } from '../src/lib/trust/store.ts';
 import { TrustLoader } from '../src/lib/trust/loader.ts';
 import { readFileSync } from 'node:fs';
 
@@ -308,7 +308,23 @@ ok(!/not on the trusted list/.test(verdict.reason ?? ''), 'and never claiming it
 verdict = judgeTrust(parsed(makeCert({ cn: 'Nadie', org: 'Nadie', country: 'ES', days: 365 }).cert), [], ecView, new Date(), forSignatures);
 ok(verdict.judged === true && /not on the trusted list/.test(verdict.reason ?? ''), 'a certificate from nobody is still ruled out, as it should be');
 
-console.log('11. How much of Europe this verifier can actually check');
+console.log('11. Outside the Union is an answer, not a gap');
+
+// The default time-stamping authority is DigiCert, in the United States.
+// There is no US trusted list because eIDAS qualification does not exist
+// there — so "not qualified" is a fact, and reporting it as "not judged"
+// would be hiding behind uncertainty we do not actually have.
+const american = makeCert({ cn: 'DigiCert Timestamp Responder', org: 'DigiCert', country: 'US', days: 365 });
+log = [];
+loader = new TrustLoader({ fetch: fakeFetch(log) });
+view = await loader.view([parsed(american.cert)]);
+ok(!log.includes('us.json'), 'no list is looked for');
+ok(view.outside.includes('US'), 'the territory is reported as outside the lists');
+verdict = judgeTrust(parsed(american.cert), [], view, new Date(), forTimestamps);
+ok(verdict.judged === true && verdict.trusted === false, 'and the verdict is settled: not qualified');
+ok(/US, which the EU trusted lists do not cover/.test(verdict.reason ?? ''), `saying why: ${verdict.reason}`);
+
+console.log('12. How much of Europe this verifier can actually check');
 let readable = 0;
 let unreadable = 0;
 for (const cc of Object.keys(index.territories)) {

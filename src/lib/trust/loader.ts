@@ -47,6 +47,8 @@ export class TrustLoader {
   readonly consulted = new Map<string, TerritoryInfo>();
   /** Territory -> why its list is not among the anchors. */
   readonly unavailable: Record<string, string> = {};
+  /** Territories the trusted lists do not cover: outside the Union, nothing is qualified. */
+  readonly outside = new Set<string>();
 
   constructor(options: TrustLoaderOptions = {}) {
     this.base = options.base ?? '/trust/';
@@ -78,7 +80,10 @@ export class TrustLoader {
     const key = cc.toLowerCase();
     const info = index.territories[key];
     if (!info) {
-      this.unavailable[cc.toUpperCase()] = 'the store has no list for this territory';
+      // Not a gap in the store: the EU trusted lists cover the Union plus
+      // Iceland, Liechtenstein and Norway, and nowhere else. A certificate
+      // from anywhere else is definitively not qualified.
+      this.outside.add(cc.toUpperCase());
       return [];
     }
     if (info.unavailable) {
@@ -144,7 +149,12 @@ export class TrustLoader {
       }
     }
 
-    return { anchors, loaded: [...this.consulted.keys()], unavailable: { ...this.unavailable } };
+    return {
+      anchors,
+      loaded: [...this.consulted.keys()],
+      unavailable: { ...this.unavailable },
+      outside: [...this.outside],
+    };
   }
 
   /** Bound for `verifyPdfSignatures({ trust })`. */

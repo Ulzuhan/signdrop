@@ -1,8 +1,21 @@
 import type { MetadataRoute } from 'next';
 
+/**
+ * What crawlers may do here.
+ *
+ * Two things are deliberate. The host is only ever the configured one — a
+ * copy of this MIT repository running elsewhere must not advertise our
+ * domain — and with `SIGNDROP_INDEXABLE` unset the answer is a flat refusal,
+ * because a service that is deployed but not announced should not turn up in
+ * a search before its owner says so.
+ */
 export default function robots(): MetadataRoute.Robots {
   const publicHost = process.env.SIGNDROP_PUBLIC_HOST?.trim();
-  const baseUrl = publicHost ? `https://${publicHost}` : 'https://sign.kaicorplabs.com';
+  const indexable = process.env.SIGNDROP_INDEXABLE === '1' && Boolean(publicHost);
+
+  if (!indexable) {
+    return { rules: { userAgent: '*', disallow: '/' } };
+  }
 
   return {
     rules: {
@@ -10,6 +23,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/api/auth/'],
     },
-    sitemap: `${baseUrl}/sitemap.xml`,
+    sitemap: `https://${publicHost}/sitemap.xml`,
   };
 }

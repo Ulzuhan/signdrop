@@ -1,7 +1,22 @@
 /**
- * PDF Viewer & Rendering Engine using pdfjs-dist.
- * Provides client-side rendering into HTML Canvas and metadata extraction.
+ * PDF rendering with pdf.js, from this origin and no other.
+ *
+ * The worker is the code that parses the PDF, and the character maps and
+ * standard fonts are data it fetches while doing so. All three used to come
+ * from a CDN — cdnjs for the worker, jsDelivr for the maps — which meant that
+ * a product whose entire argument is "the document never leaves your machine"
+ * was handing the parsing of that document to two third parties on every
+ * open. Whoever controls that CDN controls what runs against the contract.
+ *
+ * The worker is now resolved by the bundler through `new URL(...,
+ * import.meta.url)`, so Next emits it as an asset of this build; the maps and
+ * fonts are copied into public/pdfjs by scripts/copy-pdfjs-assets.mjs and
+ * addressed relative to the page. Nothing here reaches outside the origin,
+ * which is also what lets the CSP say `connect-src 'self'` and mean it.
  */
+
+/** Where the copied assets live. Relative, so it works behind any host or path. */
+const PDFJS_ASSETS = '/pdfjs/';
 
 // Dynamic import helper to safely handle SSR in Next.js
 export async function getPdfJs() {
@@ -9,9 +24,14 @@ export async function getPdfJs() {
     throw new Error('pdfjs-dist rendering is only available in browser');
   }
   const pdfjs = await import('pdfjs-dist');
-  // Configure worker from CDN or local public asset
   if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+    try {
+      // Bundled: webpack rewrites this to the emitted asset's URL.
+      pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+    } catch {
+      // A build that did not bundle it still has the copy in public/.
+      pdfjs.GlobalWorkerOptions.workerSrc = `${PDFJS_ASSETS}pdf.worker.min.mjs`;
+    }
   }
   return pdfjs;
 }
@@ -20,8 +40,9 @@ export async function loadPdfDocument(arrayBuffer: ArrayBuffer) {
   const pdfjs = await getPdfJs();
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(arrayBuffer),
-    cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist/cmaps/',
+    cMapUrl: `${PDFJS_ASSETS}cmaps/`,
     cMapPacked: true,
+    standardFontDataUrl: `${PDFJS_ASSETS}standard_fonts/`,
   });
   return loadingTask.promise;
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
+import { Space_Grotesk, Inter, JetBrains_Mono, Caveat, Dancing_Script, Great_Vibes, Playwrite_US_Trad } from 'next/font/google';
 import { KaiCorpHeader } from '@/components/kaicorp-header';
 import { KaiCorpFooter } from '@/components/kaicorp-footer';
 import { Toaster } from 'sonner';
@@ -10,6 +10,26 @@ import './globals.css';
 const display = Space_Grotesk({ variable: '--font-display', weight: ['500', '600', '700'], subsets: ['latin'] });
 const sans = Inter({ variable: '--font-sans', weight: ['400', '500', '600'], subsets: ['latin'] });
 const mono = JetBrains_Mono({ variable: '--font-mono', weight: ['400', '500'], subsets: ['latin'] });
+
+/**
+ * The four hands a typed signature can be written in.
+ *
+ * By `next/font/google`, not by `@import` in globals.css: the import made
+ * every page fetch a stylesheet from fonts.googleapis.com and the faces from
+ * fonts.gstatic.com, which is a third party learning that someone opened
+ * SignDrop — on a product that says nothing leaves the machine. next/font
+ * downloads them at build time and serves them from this origin, which is
+ * also what lets the CSP say `font-src 'self'`.
+ *
+ * Each one exposes a CSS variable rather than a family name, because the
+ * hashed family next/font generates is not something anybody can type: the
+ * canvas that renders the typed signature reads the variable to find out what
+ * to draw with.
+ */
+const caveat = Caveat({ variable: '--font-sig-caveat', weight: ['600'], subsets: ['latin'] });
+const dancing = Dancing_Script({ variable: '--font-sig-dancing', weight: ['600'], subsets: ['latin'] });
+const vibes = Great_Vibes({ variable: '--font-sig-vibes', weight: ['400'], subsets: ['latin'] });
+const trad = Playwrite_US_Trad({ variable: '--font-sig-trad', weight: ['400'] });
 
 const publicHost = process.env.SIGNDROP_PUBLIC_HOST?.trim();
 const base = publicHost ? new URL(`https://${publicHost}`) : undefined;
@@ -49,7 +69,7 @@ export default async function RootLayout({
   const enrollUrl = process.env.SIGNDROP_ENROLL_URL?.trim();
 
   return (
-    <html lang="es" className={`dark ${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang="en" className={`dark ${display.variable} ${sans.variable} ${mono.variable} ${caveat.variable} ${dancing.variable} ${vibes.variable} ${trad.variable}`}>
       <body className="flex min-h-screen flex-col bg-background text-foreground">
         <KaiCorpHeader app="SignDrop">
           {session ? (

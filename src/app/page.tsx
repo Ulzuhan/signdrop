@@ -12,7 +12,10 @@ export default function HomePage() {
     info: PdfDocumentInfo;
   } | null>(null);
 
-  const docDropUrl = process.env.NEXT_PUBLIC_DOCDROP_URL || 'https://docdrop.kaicorplabs.com';
+  // No configuration, no button. This is an MIT repository and a default
+  // pointing at our own DocDrop would ship our infrastructure to everyone who
+  // clones it.
+  const docDropUrl = process.env.NEXT_PUBLIC_SIGNDROP_DOCDROP_URL?.trim() || undefined;
 
   if (loadedDoc) {
     return (

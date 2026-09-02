@@ -13,6 +13,13 @@
 # Production
 /build
 
+# pdf.js worker, character maps and standard fonts.
+# Copied out of node_modules by scripts/copy-pdfjs-assets.mjs on postinstall,
+# so they are always in step with the installed pdfjs-dist. Committing them
+# would only create a version to drift out of step with. `npm ci` runs
+# postinstall, which is what puts them in the image.
+/public/pdfjs/
+
 # Misc
 .DS_Store
 *.pem

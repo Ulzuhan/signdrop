@@ -20,10 +20,10 @@ const INK_COLORS = [
 ];
 
 const FONTS = [
-  { id: 'font-sig-caveat', name: 'Caveat', sample: 'Firma Elegante' },
-  { id: 'font-sig-dancing', name: 'Dancing Script', sample: 'Firma Elegante' },
-  { id: 'font-sig-vibes', name: 'Great Vibes', sample: 'Firma Elegante' },
-  { id: 'font-sig-trad', name: 'Playwrite', sample: 'Firma Elegante' },
+  { id: 'font-sig-caveat', name: 'Caveat', sample: 'Elegant hand' },
+  { id: 'font-sig-dancing', name: 'Dancing Script', sample: 'Elegant hand' },
+  { id: 'font-sig-vibes', name: 'Great Vibes', sample: 'Elegant hand' },
+  { id: 'font-sig-trad', name: 'Playwrite', sample: 'Elegant hand' },
 ];
 
 export const SignatureModal: React.FC<SignatureModalProps> = ({
@@ -96,7 +96,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     }
   };
 
-  const generateTypedSignatureImage = (): string => {
+  const generateTypedSignatureImage = async (): Promise<string> => {
     const canvas = document.createElement('canvas');
     canvas.width = 600;
     canvas.height = 200;
@@ -104,21 +104,31 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     if (!ctx) return '';
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    let fontFamily = 'Caveat, cursive';
-    if (selectedFont === 'font-sig-dancing') fontFamily = "'Dancing Script', cursive";
-    if (selectedFont === 'font-sig-vibes') fontFamily = "'Great Vibes', cursive";
-    if (selectedFont === 'font-sig-trad') fontFamily = "'Playwrite US Trad', cursive";
+    // The families are self-hosted by next/font under a generated name, so
+    // the only way to name one is through the CSS variable it was given.
+    // Read off the document, because a canvas has no stylesheet of its own.
+    const family = getComputedStyle(document.documentElement).getPropertyValue(`--${selectedFont}`).trim();
+    const fontFamily = family ? `${family}, cursive` : 'cursive';
+
+    // A canvas draws with whatever is loaded at that instant, and next/font
+    // loads a face only when something uses it. Without this the signature
+    // would silently come out in the fallback the first time it is used.
+    try {
+      await document.fonts.load(`64px ${fontFamily}`, typedText || 'Signature');
+    } catch {
+      // A browser that cannot report on its fonts still draws with them.
+    }
 
     ctx.font = `64px ${fontFamily}`;
     ctx.fillStyle = inkColor;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(typedText || 'Firma', canvas.width / 2, canvas.height / 2);
+    ctx.fillText(typedText || 'Signature', canvas.width / 2, canvas.height / 2);
 
     return canvas.toDataURL('image/png');
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     let finalDataUrl = '';
 
     if (tab === 'draw') {
@@ -126,7 +136,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       finalDataUrl = padRef.current.toDataURL('image/png');
     } else if (tab === 'type') {
       if (!typedText.trim()) return;
-      finalDataUrl = generateTypedSignatureImage();
+      finalDataUrl = await generateTypedSignatureImage();
     } else if (tab === 'upload') {
       if (!processedUpload && !uploadedRaw) return;
       finalDataUrl = processedUpload || uploadedRaw || '';

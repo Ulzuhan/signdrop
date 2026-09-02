@@ -34,7 +34,8 @@
     "test:pades": "tsx scripts/test-pades-and-tsa.mjs",
     "test:verify": "tsx scripts/test-verify.mjs",
     "test:trust": "tsx scripts/test-trust.mjs",
-    "test:incremental": "tsx scripts/test-incremental.mjs"
+    "test:incremental": "tsx scripts/test-incremental.mjs",
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -1,8 +1,10 @@
 import type { MetadataRoute } from 'next';
 
+/** Empty until this deployment is both named and meant to be found. */
 export default function sitemap(): MetadataRoute.Sitemap {
   const publicHost = process.env.SIGNDROP_PUBLIC_HOST?.trim();
-  const baseUrl = publicHost ? `https://${publicHost}` : 'https://sign.kaicorplabs.com';
+  if (!publicHost || process.env.SIGNDROP_INDEXABLE !== '1') return [];
+  const baseUrl = `https://${publicHost}`;
 
   return [
     {

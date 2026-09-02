@@ -6,10 +6,14 @@
 # only the Next.js standalone output.
 
 # ── Dependencies ─────────────────────────────────────────────────────
+# `npm ci` against the committed lockfile, so the image is the same one
+# twice; `npm install` without it resolved whatever was newest that day.
+# `--ignore-scripts` because postinstall copies pdf.js's assets and the
+# source is not here yet — it runs in the builder, where it can.
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 
 # ── Build ────────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
@@ -17,7 +21,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+# The worker, character maps and standard fonts pdf.js needs, into public/,
+# so nothing in the running image ever reaches for a CDN. Together with
+# public/trust they are carried into the standalone output by postbuild.
+RUN node scripts/copy-pdfjs-assets.mjs && npm run build
 
 # ── Runtime ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner

@@ -31,7 +31,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
   sealedHash,
   documentName,
   sealedPdfBlobUrl,
-  docDropUrl = 'https://docdrop.kaicorplabs.com',
+  docDropUrl,
   p12Data,
   onOpenCertModal,
   onClose,

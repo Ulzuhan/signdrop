@@ -186,6 +186,16 @@ export interface TrustStoreView {
   loaded?: string[];
   /** Territory -> why its list is missing. */
   unavailable?: Record<string, string>;
+  /**
+   * Territories the EU trusted lists do not cover at all.
+   *
+   * A different verdict from `unavailable`, and the difference is the whole
+   * point. Slovakia has a list we could not fetch, so a Slovak certificate is
+   * NOT JUDGED. The United States has no list because qualification under
+   * eIDAS does not exist there, so a DigiCert time-stamp is definitively not
+   * qualified — which is a fact worth stating, not a gap to apologise for.
+   */
+  outside?: string[];
 }
 
 const notJudged = (territory: string | null, reason: string): TrustReport => ({
@@ -221,6 +231,7 @@ export function judgeTrust(
    * plain array and vouches for it — that is the suite, and the old contract.
    */
   const canRuleOut = !view2.loaded || (country !== null && view2.loaded.includes(country));
+  const outsideTheUnion = country !== null && (view2.outside?.includes(country) ?? false);
   const { store, byIdentity, unreadableBySubject } = anchorStore(anchors);
   // Leaf first, then whoever issued the last link, as far as the signature carries.
   const chain: forge.pki.Certificate[] = [leaf];
@@ -250,6 +261,17 @@ export function judgeTrust(
           service: svc,
           territory: country,
           reason: `The issuer is on the trusted list${svc ? ` (${svc.provider})` : ''}, but signs with an ${uncheckable.key === 'ec' ? 'elliptic-curve' : uncheckable.key} key, which this verifier cannot check.`,
+        };
+      }
+      // A country the trusted lists do not cover is a settled answer, not a
+      // gap: outside the Union there is no such thing as a qualified service.
+      if (outsideTheUnion) {
+        return {
+          trusted: false,
+          judged: true,
+          service: null,
+          territory: country,
+          reason: `The issuer is in ${country}, which the EU trusted lists do not cover, so this is not a qualified service.`,
         };
       }
       // The chain reaches nothing we hold. Whether that means "not qualified"
