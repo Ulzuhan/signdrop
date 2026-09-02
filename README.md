@@ -70,6 +70,9 @@ npm run test:pades
 
 # Build standalone production bundle
 npm run build
+
+# A PDF signed with a throwaway certificate, to check with pdfsig / Acrobat
+npx tsx scripts/sample-signed-pdf.mjs out.pdf && pdfsig out.pdf
 ```
 
 ### Docker Deployment
