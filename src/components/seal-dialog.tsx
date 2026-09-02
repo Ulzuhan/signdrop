@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ShieldCheck, Download, Send, Check, Copy, ExternalLink, Award, Clock, FileKey } from 'lucide-react';
+import { X, ShieldCheck, Download, Send, Check, Copy, ExternalLink, Award, Clock } from 'lucide-react';
 import { ParsedPkcs12 } from '@/lib/pades/signer';
 import { toast } from 'sonner';
 
@@ -136,7 +136,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-muted-foreground">Signer's name or organisation</label>
+              <label className="text-xs font-semibold text-muted-foreground">Signer&apos;s name or organisation</label>
               <input
                 type="text"
                 value={signerName}

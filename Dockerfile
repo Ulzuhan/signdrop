@@ -49,8 +49,12 @@ USER signdrop
 
 CMD ["node", "start.js"]
 
+# /api/health and not /, because / answers 200 whether or not anybody can
+# actually sign in: without the session secret or the OIDC client the service
+# is up and useless, and a watchdog would call it healthy for as long as it
+# lasted.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3466)+'/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3466)+'/api/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
 
 LABEL org.opencontainers.image.title="SignDrop" \
       org.opencontainers.image.description="Client-side PDF signing, cryptographic sealing, and document verification." \

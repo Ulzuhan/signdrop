@@ -15,6 +15,15 @@
  * which is also what lets the CSP say `connect-src 'self'` and mean it.
  */
 
+/**
+ * pdf.js's own document handle, re-exported under a name this codebase uses.
+ *
+ * A type-only import, so nothing of pdfjs-dist is pulled into a module that
+ * only wanted the shape. It was `any` in four places, which meant the viewer
+ * could call anything at all on it and the compiler would agree.
+ */
+export type { PDFDocumentProxy as PdfJsDocument, PDFPageProxy as PdfJsPage } from 'pdfjs-dist';
+
 /** Where the copied assets live. Relative, so it works behind any host or path. */
 const PDFJS_ASSETS = '/pdfjs/';
 
@@ -48,7 +57,7 @@ export async function loadPdfDocument(arrayBuffer: ArrayBuffer) {
 }
 
 export async function renderPdfPage(
-  pdfDoc: any,
+  pdfDoc: import('pdfjs-dist').PDFDocumentProxy,
   pageNumber: number,
   canvas: HTMLCanvasElement,
   scale = 1.5

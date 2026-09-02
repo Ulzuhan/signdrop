@@ -15,8 +15,6 @@
  */
 import forge from 'node-forge';
 
-const asn1 = forge.asn1;
-
 /** One certificate of the trust store, as scripts/update-trust-store.mjs writes it. */
 export interface TrustAnchor {
   sha256: string;

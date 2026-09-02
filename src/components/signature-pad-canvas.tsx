@@ -58,6 +58,12 @@ export const SignaturePadCanvas: React.FC<SignaturePadCanvasProps> = ({
       window.removeEventListener('resize', resizeCanvas);
       pad.off();
     };
+    // Once, on mount, and that is the point: the pad owns the canvas and
+    // rebuilding it would throw away whatever has been drawn on it. The
+    // things it captures are handled properly elsewhere — the pen colour has
+    // its own effect below, and the callbacks are only ever read at
+    // construction time by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

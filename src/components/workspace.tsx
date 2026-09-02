@@ -10,7 +10,7 @@ import React, { useState } from 'react';
 import { PdfUploader } from '@/components/pdf-uploader';
 import { PdfViewer } from '@/components/pdf-viewer';
 import { PdfDocumentInfo } from '@/lib/types';
-import { Shield, Sparkles, Cpu, Lock, CheckCircle2 } from 'lucide-react';
+import { Shield, Sparkles, Cpu, Lock } from 'lucide-react';
 
 export function Workspace() {
   const [loadedDoc, setLoadedDoc] = useState<{

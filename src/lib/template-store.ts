@@ -126,7 +126,7 @@ export function importTemplatesFromJson(jsonStr: string): number {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(inMemoryTemplates));
     }
     return importedCount;
-  } catch (err: any) {
-    throw new Error(`Error al importar plantillas: ${err.message}`);
+  } catch (err) {
+    throw new Error(`Those templates could not be imported: ${err instanceof Error ? err.message : String(err)}`);
   }
 }

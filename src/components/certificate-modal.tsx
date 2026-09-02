@@ -92,12 +92,13 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!parsed) {
-      setTrust(null);
-      return;
-    }
+    if (!parsed) return;
     let current = true;
-    setTrust('checking');
+    // Scheduled rather than set in the effect body: writing state there makes
+    // the render that just finished immediately stale, and React says so.
+    queueMicrotask(() => {
+      if (current) setTrust('checking');
+    });
     trustLoader
       .view([parsed.cert, ...parsed.caCertificates])
       .then((view) => {
@@ -128,6 +129,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
       toast.success('Certificate read.');
     } catch {
       // Password required
+      setTrust(null);
       setParsed(null);
     }
   };
@@ -139,7 +141,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
       const res = parsePkcs12Bundle(p12Buffer, password);
       setParsed(res);
       toast.success('Certificate unlocked.');
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       toast.error('Wrong password, or a certificate format this reader does not support.');
     } finally {
@@ -153,6 +155,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   };
 
   const handleClear = () => {
+    setTrust(null);
     setParsed(null);
     setP12Buffer(null);
     setFileName('');
@@ -201,7 +204,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                   {fileName ? fileName : 'Choose your .p12 or .pfx file'}
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  Opened in this browser's memory. The file never leaves your machine.
+                  Opened in this browser&apos;s memory. The file never leaves your machine.
                 </span>
                 <input
                   ref={fileInputRef}
@@ -291,7 +294,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                   PAdES mode
                 </p>
                 <p className="mt-1">
-                  Sealing embeds a PKCS#7 signature over the document's /ByteRange, which is what Acrobat checks.
+                  Sealing embeds a PKCS#7 signature over the document&apos;s /ByteRange, which is what Acrobat checks.
                 </p>
               </div>
             </div>

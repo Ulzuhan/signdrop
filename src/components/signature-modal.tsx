@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, PenTool, Type, Upload, Trash2, Check, Sparkles } from 'lucide-react';
 import { SignaturePadCanvas } from './signature-pad-canvas';
 import { removeSignatureBackground } from '@/lib/image-filters';
@@ -45,17 +45,6 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   const padRef = useRef<SignaturePad | null>(null);
 
   // Load saved signature on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('signdrop_saved_signature');
-      if (saved && !uploadedRaw) {
-        // user can load saved signature
-      }
-    } catch {
-      // ignore
-    }
-  }, []);
-
   if (!isOpen) return null;
 
   const handleClear = () => {
@@ -358,10 +347,11 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             <button
               type="button"
               onClick={handleConfirm}
-              className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-black transition-opacity hover:opacity-90"
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-black transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Check className="size-4" />
-              Usar firma
+              {isProcessing ? 'Working…' : 'Use this signature'}
             </button>
           </div>
         </div>

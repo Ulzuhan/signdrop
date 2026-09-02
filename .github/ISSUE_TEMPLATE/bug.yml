@@ -1,0 +1,38 @@
+name: Something does not work
+description: A signature that should verify and does not, or the other way round
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not attach a real contract.** If a document is involved, describe
+        what produced it — Acrobat, Word, another signing tool — or attach one
+        you have made up for the purpose. If it is a security problem, use the
+        Security tab instead of this form.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to get there
+      placeholder: |
+        1. Open a PDF signed with…
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: others
+    attributes:
+      label: What another verifier says
+      description: >
+        If it is about a signature, what do Acrobat or `pdfsig` (poppler) make
+        of the same file? Disagreeing with them is the most useful thing you
+        can tell us.
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version

@@ -1,0 +1,22 @@
+name: An idea
+description: Something SignDrop should do, or should stop doing
+labels: [idea]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem, before the solution
+      description: What are you trying to get done that is awkward or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you have in mind
+  - type: markdown
+    attributes:
+      value: |
+        Worth knowing before you write: the server never sees the document and
+        is not going to start (`docs/decisions/0001-client-side-only.md`).
+        Anything that needs it to hold a file is a different product, and
+        DocDrop already exists for moving them.

@@ -1,112 +1,139 @@
 # SignDrop
 
-**Client-side PDF signing, cryptographic sealing, and document verification.** Zero-knowledge, browser-processed, and tamper-evident.
+Sign a PDF where it already is.
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+SignDrop stamps, seals and signs PDF documents **in the browser**. The server
+never receives the document, never stores it, and could not produce it if
+asked — it holds no files, no accounts and no database. The only thing that
+ever leaves the machine is a 32-byte hash, and only if you ask for a
+time-stamp.
 
-Uploading confidential contracts, agreements, or NDA documents to third-party electronic signature SaaS platforms exposes sensitive terms to external data processing. **SignDrop** enables users to stamp visual signatures, initials, dates, and form fields into PDF documents, generating an integrity seal with SHA-256 checksums, official RFC 3161 timestamps, and PAdES X.509 digital certificates — entirely inside the user's browser.
+The signature is the real thing: a PAdES signature that Acrobat validates,
+with the certificate chained to the qualified authorities of the EU trusted
+lists, and a second signature that does not break the first.
 
----
-
-## 🔒 Privacy & Cryptographic Model
-
-- **100% Client-side PDF Processing**: The original PDF document is parsed, modified, and rendered locally in the browser memory using `pdfjs-dist` and `pdf-lib`. **The document never uploads to any remote server during signing**.
-- **PAdES Advanced Electronic Signatures (X.509 PKI)**:
-  - Local loading and unlock of `.p12` / `.pfx` digital certificates and private keys entirely in WebAssembly / JS memory.
-  - Generates ISO 32000-1 / ETSI EN 319 142 `/ByteRange` detached CMS PKCS#7 digital signatures, natively recognized by **Adobe Acrobat Reader** (*"Signed and all signatures are valid"*).
-- **Time Stamping (RFC 3161 TSA)**:
-  - Only a 32-byte SHA-256 digest is sent to the Time Stamping Authority, through this instance's `/api/tsa` proxy. The token comes back and is **embedded in the PAdES signature** as the signature-time-stamp attribute (PAdES-B-T), where `/verify` reads the certified time from. A time-stamp needs a certificate signature to live in; without a `.p12`, none is requested.
-- **Audit Trail**:
-  - Records the SHA-256 of the original document and appends an audit sheet with a QR to this instance's `/verify` page.
-  - On its own the sheet is a record, not proof: a PDF cannot carry its own hash. Integrity is provable only through the PAdES signature, which covers the sheet too.
-- **Verification Engine (`/verify`)**:
-  - Public drag-and-drop page that checks the maths of every PAdES signature in the file — the covered bytes hash to what was signed, the signature verifies with the certificate it carries, the certificate was valid at the claimed time, and whether anything was appended after signing — and of every RFC 3161 token (imprint over the signature, TSA signature). It does **not** validate certificate chains against a trust store, and says so on the page; metadata is shown as what the file claims, never as proof.
-- **Trust store: the Spanish trusted list**:
-  - `/verify` chains every signer and TSA certificate to the qualified authorities on Spain's EU trusted list (`public/trust/es-trusted-list.json`, ~330 issuing authorities: FNMT-RCM, Camerfirma, Firmaprofesional, ACCV, Izenpe, the DNIe's, …), with each service's status. A certificate under a withdrawn service is reported as withdrawn, with the date; a self-signed one as not on the list.
-  - Provenance: the EU LOTL names the Spanish list; the list carries the certificates. `node scripts/update-trust-store.mjs` rebuilds the file and refuses to write unless the FNMT's issuing CA is in it *and* verifies against the FNMT root the FNMT publishes itself. The list is republished roughly every six months; rebuild it then.
-  - The store is fetched by `/verify` on demand (same origin, ~430 KB compressed), never bundled into every page.
-- **Reusable Templates Engine**:
-  - Save, manage, export, and import stamp placement configurations (JSON format) across sessions.
-- **DocDrop hand-off**:
-  - A link to a DocDrop instance for sending the signed PDF encrypted end-to-end (shown only when `SIGNDROP_DOCDROP_URL` is set).
+MIT licensed. Part of [KaiCorp Labs](https://kaicorplabs.com).
 
 ---
 
-## ⚡ Core Features
+## What it does
 
-- **Multi-Type Signatures**:
-  - Draw signature (smooth vector Bézier canvas with color inks).
-  - Type signature (curated typography: *Caveat*, *Dancing Script*, *Great Vibes*, *Playwrite*).
-  - Upload signature image (with automatic background removal and contrast thresholding).
-- **Document Annotations**: Place text fields, dates, checkboxes, and initials across any page.
-- **Multi-page Support**: Page thumbnails sidebar, adaptive zoom, drag-and-drop overlays, and resize handles.
-- **Digital Certificates**: Full support for `.p12` / `.pfx` files for advanced PAdES signing.
-- **RFC 3161 Time-Stamps**: embedded in the signature, verifiable on `/verify`.
-- **Template Store**: Reusable field templates with JSON import / export.
-- **PDF Verification Tool (`/verify`)**: checks signatures and time-stamps in the browser; honest about what it cannot check.
+**Sign.** Draw your signature, type it in one of four hands, or upload a scan
+and have the background taken out. Place it, with initials, dates and fields,
+on any page. Load your `.p12` and the placed signature becomes the appearance
+of a real PAdES signature field — what a reader sees *is* the signature, and
+clicking it in any reader opens the certificate behind it.
 
----
+**Seal.** An audit sheet with the SHA-256 of the original, the time in UTC and
+a QR code that opens the verifier.
 
-## 🛠️ Architecture & Tech Stack
+**Time-stamp.** An RFC 3161 token requested over the signature value and
+embedded inside it, which is what PAdES-B-T means and what keeps a signature
+meaningful after the certificate expires.
 
-- **Frontend**: Next.js (App Router) + TypeScript + Tailwind CSS.
-- **PDF Engine**: `pdfjs-dist` (client-side rendering) + `pdf-lib` (PDF manipulation and audit sheet generation).
-- **Cryptography & PAdES**: `node-forge` (PKCS#12, PKCS#7/CMS, X.509, ASN.1) + Web Crypto API (`crypto.subtle`).
-- **UI Components**: KaiCorp theme (*Space Grotesk*, *Inter*, *JetBrains Mono*).
-- **Container / Isolation**: `read_only: true`, `cap_drop: [ALL]`, non-root user (`uid 10001`), loopback port binding (`127.0.0.1:3466`).
+**Verify.** `/verify` needs no account and never will. It checks the maths of
+every signature in a file, the token each carries, and who issued the
+certificate — against the trusted lists of all thirty territories the EU
+publishes, downloading only the ones a document points at.
 
----
+## What it does not do, said plainly
 
-## 🚀 Getting Started
+- **It does not check revocation.** No OCSP, no CRLs. A certificate revoked
+  after issue still verifies here, and the page says the verifier does not
+  check this rather than implying otherwise.
+- **It cannot check ECDSA or RSA-PSS signatures.** They come back as "cannot
+  check", never as invalid. About 7% of Europe's qualified authorities sign
+  with elliptic curves, and a certificate issued by one of them is reported as
+  *not judged*, naming the provider — never as *not on the trusted list*,
+  which would be false.
+- **It does not make your signature qualified.** That depends on your
+  certificate, which comes from a qualified provider and not from us. The
+  default time-stamping authority is not on the EU trusted lists, and
+  `/verify` says so rather than letting you assume.
+- **It does not keep anything.** Nothing is stored, so nothing is recoverable.
 
-### Local Development
+## Three verdicts, not two
+
+The thing this tool is built around: *on the trusted list*, *not on it*, and
+**not judged** — the last one with the reason. Slovakia publishes its trusted
+list over plain HTTP, so its anchors are refused; a Slovak qualified
+certificate therefore comes back as not judged, not as unlisted. A certificate
+from outside the Union is a settled *not qualified*, because qualification
+does not exist there. An issuer whose key this verifier cannot follow is
+*listed and uncheckable*, with the provider named.
+
+Anything else would be a guess wearing a verdict's clothes.
+
+## Running it
 
 ```bash
-# Install dependencies
-npm install
-
-# Start development server on port 3466
-npm run dev
-
-# Run automated test suites (PDF Engine + PAdES + TSA + Templates)
-npm test
-npm run test:pades
-
-# Build standalone production bundle
-npm run build
-
-# A PDF signed with a throwaway certificate, to check with pdfsig / Acrobat
-npx tsx scripts/sample-signed-pdf.mjs out.pdf && pdfsig out.pdf
+npm ci                 # postinstall copies pdf.js's worker and maps into public/
+cp .env.example .env
+npm run dev            # http://localhost:3466
 ```
 
-### Docker Deployment
+Signing needs `SIGNDROP_SESSION_SECRET` (`openssl rand -hex 32`) and an OIDC
+provider; `/verify` works without either. Everything in `.env.example` is
+optional and nothing has a default pointing at anybody's infrastructure: leave
+a variable unset and the feature it configures is simply absent.
+
+### With Docker
 
 ```bash
-docker compose up -d
+docker run --rm -p 3466:3466 \
+  -e SIGNDROP_SESSION_SECRET="$(openssl rand -hex 32)" \
+  ghcr.io/ulzuhan/signdrop:latest
 ```
 
----
+## The trusted lists
 
-## ⚙️ Environment Variables
+`public/trust/` holds one file per territory — 3,409 qualified authorities —
+rebuilt from the EU List of Trusted Lists:
 
-| Variable | Description |
-|---|---|
-| `SIGNDROP_PORT` | Port to listen on (default: `3466`). |
-| `SIGNDROP_HOST` | Host binding address (default: `0.0.0.0` or `127.0.0.1`). |
-| `SIGNDROP_PUBLIC_HOST` | Explicit public hostname for origin guarding (e.g. `sign.kaicorplabs.com`). |
-| `SIGNDROP_SESSION_SECRET` | Secret key for signing session cookies. |
-| `SIGNDROP_OIDC_CLIENT_ID` | OIDC Client ID. |
-| `SIGNDROP_OIDC_CLIENT_SECRET` | OIDC Client Secret. |
-| `SIGNDROP_OIDC_DISCOVERY_URL` | OIDC Issuer Discovery URL (`/.well-known/openid-configuration`). |
-| `SIGNDROP_OIDC_REDIRECT_URI` | Public callback URL (e.g. `https://sign.kaicorplabs.com/api/auth/callback`). |
-| `SIGNDROP_ENROLL_URL` | Self-service registration flow URL. |
-| `SIGNDROP_ACCOUNT_URL` | Provider user account settings URL. |
-| `SIGNDROP_DOCDROP_URL` | Base URL of DocDrop for encrypted sharing (`https://docdrop.kaicorplabs.com`). |
-| `SIGNDROP_TSA_URL` | Time Stamping Authority server URL (default: `https://freetsa.org/tsr`). |
-| `KAICORP_FOOTER_LINKS` | Enable cross-service navigation in footer (`1` / `0`). |
+```bash
+node scripts/update-trust-store.mjs
+```
 
----
+A workflow runs it monthly and opens a pull request when something moved. It
+never pushes: a trust store that updates itself unattended is a trust store
+nobody is watching. The Spanish list is cross-checked against the certificates
+the FNMT publishes on its own site, and the run refuses to write it if that
+check fails.
 
-## 📜 License
+## Checking our work
 
-MIT License. Copyright (c) 2026 Ulzuhan.
+Every claim above has a test, and the ones about standards are contrasted
+against verifiers that are not ours:
+
+```bash
+npm test               # unit specs and the five behaviour suites
+npm run test:acceso    # who gets in
+npm run test:backchannel   # OIDC, against a provider that really signs
+npm run test:csp       # the content policy, and no inline styles coming back
+```
+
+CI installs `poppler-utils` and `qpdf` and asserts that a document signed here
+gets *Signature is Valid* and *Total document signed* out of `pdfsig`, with no
+syntax complaints, and passes `qpdf --check` — and that a twice-signed
+document gets two valid signatures with the first covering its own revision.
+
+## How it is put together
+
+```
+src/lib/          no React, no Next: isomorphic, and tested in Node with the
+  pdf/            same code that runs in the browser
+  pades/          signer, verifier, and the CMS assembled by hand
+  tsa/            RFC 3161 client
+  trust/          the store schema, the per-country loader, the judgement
+  auth/           OIDC by discovery, sealed sessions, guest links
+src/app/          thin routes
+public/trust/     one file per territory, plus two indexes
+```
+
+Decisions that closed off an alternative are written down in
+`docs/decisions/`. The threat model is in `SECURITY.md`.
+
+## Contributing
+
+`CONTRIBUTING.md`. The short version: whatever the README claims, a test
+measures it.

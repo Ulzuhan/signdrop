@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { StampItem, PdfDocumentInfo, AuditTrailData } from '@/lib/types';
 import { DocumentTemplate } from '@/lib/pades/types';
-import { loadPdfDocument, renderPdfPage } from '@/lib/pdf/engine';
+import { loadPdfDocument, renderPdfPage, type PdfJsDocument } from '@/lib/pdf/engine';
 import { sealPdfDocument } from '@/lib/pdf/sealer';
 import { generateRandomId } from '@/lib/crypto';
 import { requestTsaTimestamp } from '@/lib/tsa/client';
@@ -44,7 +44,8 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
   onReset,
   docDropUrl,
 }) => {
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  // pdf.js hands back its own document object and ships no types for it.
+  const [pdfDoc, setPdfDoc] = useState<PdfJsDocument | null>(null);
   const [numPages, setNumPages] = useState<number>(1);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.2);

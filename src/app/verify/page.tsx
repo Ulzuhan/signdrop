@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
+import Link from 'next/link';
 import { ShieldCheck, ShieldAlert, ShieldQuestion, FileSearch, ArrowLeft, Copy, Check, Clock, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { verifyPdfSignatures, type PdfVerification, type SignatureReport, type CertificateSummary } from '@/lib/pades/verifier';
@@ -221,10 +222,10 @@ export default function VerifyPage() {
     <main className="flex flex-1 flex-col items-center px-4 py-12 sm:px-6">
       <div className="mx-auto w-full max-w-2xl">
         <div className="mb-6">
-          <a href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary">
             <ArrowLeft className="size-3.5" aria-hidden />
             Back to SignDrop
-          </a>
+          </Link>
         </div>
 
         <div className="text-center">

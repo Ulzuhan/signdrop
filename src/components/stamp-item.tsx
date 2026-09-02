@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Trash2, Copy, CheckSquare, Square } from 'lucide-react';
 import { StampItem } from '@/lib/types';
 
@@ -53,8 +53,8 @@ export const StampItemOverlay: React.FC<StampItemProps> = ({
     const deltaX = ((e.clientX - dragStart.x) / containerWidth) * 100;
     const deltaY = ((e.clientY - dragStart.y) / containerHeight) * 100;
 
-    let newX = Math.max(0, Math.min(100 - stamp.width, dragStart.stampX + deltaX));
-    let newY = Math.max(0, Math.min(100 - stamp.height, dragStart.stampY + deltaY));
+    const newX = Math.max(0, Math.min(100 - stamp.width, dragStart.stampX + deltaX));
+    const newY = Math.max(0, Math.min(100 - stamp.height, dragStart.stampY + deltaY));
 
     onChange({ x: newX, y: newY });
   };

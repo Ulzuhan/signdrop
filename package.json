@@ -1,7 +1,7 @@
 {
   "name": "signdrop",
-  "version": "1.0.0",
-  "description": "Client-side PDF signing, cryptographic sealing, and document verification. Zero-knowledge and tamper-evident.",
+  "version": "0.1.0",
+  "description": "Client-side PDF signing and verification: PAdES signatures, RFC 3161 time-stamps, and certificates checked against the EU trusted lists. The document never leaves the browser.",
   "license": "MIT",
   "author": "Ulzuhan (https://github.com/Ulzuhan)",
   "repository": {
@@ -30,7 +30,7 @@
     "start": "node scripts/start.js",
     "postbuild": "node scripts/prepare-standalone.js",
     "lint": "eslint",
-    "test": "tsx scripts/test-pdf-signing.mjs && tsx scripts/test-pades-and-tsa.mjs && tsx scripts/test-verify.mjs && tsx scripts/test-trust.mjs && tsx scripts/test-incremental.mjs",
+    "test": "vitest run && tsx scripts/test-pdf-signing.mjs && tsx scripts/test-pades-and-tsa.mjs && tsx scripts/test-verify.mjs && tsx scripts/test-trust.mjs && tsx scripts/test-incremental.mjs",
     "test:pades": "tsx scripts/test-pades-and-tsa.mjs",
     "test:verify": "tsx scripts/test-verify.mjs",
     "test:trust": "tsx scripts/test-trust.mjs",
@@ -38,7 +38,8 @@
     "postinstall": "node scripts/copy-pdfjs-assets.mjs",
     "test:backchannel": "bash scripts/test-backchannel.sh",
     "test:acceso": "bash scripts/test-acceso.sh",
-    "test:csp": "bash scripts/test-csp.sh"
+    "test:csp": "bash scripts/test-csp.sh",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -66,6 +67,7 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.9",
     "tsx": "^4.23.13",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.11"
   }
 }

@@ -1,0 +1,85 @@
+name: CI
+
+# What this proves, in order of how much it matters:
+#
+#   1. A PDF signed by SignDrop is accepted by verifiers that are not ours.
+#      `pdfsig` (poppler) and `qpdf --check` are installed for exactly that.
+#      Our own suite passing only proves we agree with ourselves.
+#   2. The behaviour suites: the verifier against what it exists to catch, the
+#      trusted lists, the widget and the second signature.
+#   3. Lint, types and the unit specs.
+#
+# `tsc --noEmit` runs AFTER `next build`, because Next generates the types the
+# routes rely on during the build. Running it first fails on every dynamic
+# route with TS2304.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # A throwaway secret so the suites can seal a session. It opens nothing:
+      # the server it belongs to lives ninety seconds and dies.
+      SIGNDROP_SESSION_SECRET: ci-only-signdrop-secret-at-least-32-bytes
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # node:22 to match the runtime image in the Dockerfile.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verifiers that are not ours
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils qpdf
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run build
+
+      - run: npx tsc --noEmit
+
+      - name: Unit specs and the behaviour suites
+        run: npm test
+
+      # The claim the whole product rests on, checked by somebody else's code.
+      - name: A signature poppler accepts, and a file qpdf finds sound
+        run: |
+          npx tsx scripts/sample-signed-pdf.mjs /tmp/signed.pdf
+          echo '── pdfsig ──'
+          pdfsig /tmp/signed.pdf | tee /tmp/pdfsig.txt
+          grep -q 'Signature is Valid' /tmp/pdfsig.txt
+          grep -q 'Total document signed' /tmp/pdfsig.txt
+          # pdfsig writes its complaints about malformed structure to stderr
+          # and still exits 0, so the absence of them is what is asserted.
+          if pdfsig /tmp/signed.pdf 2>&1 >/dev/null | grep -i 'syntax error'; then
+            echo 'pdfsig reported a syntax error in a PDF we wrote'
+            exit 1
+          fi
+          echo '── qpdf ──'
+          qpdf --check /tmp/signed.pdf
+
+      - name: Two signatures, and the first one still standing
+        run: |
+          npx tsx scripts/sample-twice-signed.mjs /tmp/twice.pdf
+          pdfsig /tmp/twice.pdf | tee /tmp/twice.txt
+          test "$(grep -c 'Signature is Valid' /tmp/twice.txt)" -eq 2
+          grep -q 'Not total document signed' /tmp/twice.txt   # the first covers its own revision
+          qpdf --check /tmp/twice.pdf
+
+      - name: Who gets in
+        run: npm run test:acceso
+
+      - name: The provider's logout notice
+        run: npm run test:backchannel
+
+      - name: The content policy, and no inline styles coming back
+        run: npm run test:csp

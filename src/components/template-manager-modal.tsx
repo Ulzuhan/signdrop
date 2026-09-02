@@ -35,7 +35,17 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
   const reload = () => setTemplates(getTemplates());
 
   useEffect(() => {
-    if (isOpen) reload();
+    // Deferred rather than set in the effect body: reading localStorage and
+    // writing the result straight back into state during the effect makes the
+    // render that just ran stale, and React says so.
+    if (!isOpen) return;
+    let vivo = true;
+    queueMicrotask(() => {
+      if (vivo) reload();
+    });
+    return () => {
+      vivo = false;
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -86,8 +96,8 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
         const count = importTemplatesFromJson(text);
         reload();
         toast.success(`${count} template(s) imported.`);
-      } catch (err: any) {
-        toast.error(err.message || 'That JSON file could not be read');
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'That JSON file could not be read');
       }
     };
     reader.readAsText(file);
