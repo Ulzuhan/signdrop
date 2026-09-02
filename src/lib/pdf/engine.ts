@@ -68,11 +68,11 @@ export async function renderPdfPage(
  * hash of the original it claims, the seal id. None of it is proof of
  * anything — metadata is written by whoever holds the file — and the
  * verification page says so. Proof comes from the PAdES signature
- * (pades-verifier.ts).
+ * (pades/verifier.ts).
  */
 export async function inspectSignedPdf(arrayBuffer: ArrayBuffer) {
   const { PDFDocument } = await import('pdf-lib');
-  const { calculateSha256 } = await import('./crypto');
+  const { calculateSha256 } = await import('../crypto');
 
   const computedHash = await calculateSha256(arrayBuffer);
   let originalHash = '';

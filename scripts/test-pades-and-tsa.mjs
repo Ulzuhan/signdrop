@@ -4,9 +4,9 @@
  */
 import forge from 'node-forge';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { parsePkcs12Bundle, signPdfWithPades } from '../src/lib/pades-signer.ts';
-import { sealPdfDocument } from '../src/lib/pdf-sealer.ts';
-import { buildTimeStampRequest } from '../src/lib/tsa-client.ts';
+import { parsePkcs12Bundle, signPdfWithPades } from '../src/lib/pades/signer.ts';
+import { sealPdfDocument } from '../src/lib/pdf/sealer.ts';
+import { buildTimeStampRequest } from '../src/lib/tsa/client.ts';
 import { saveTemplate, getTemplates, exportTemplatesAsJson, importTemplatesFromJson } from '../src/lib/template-store.ts';
 import assert from 'node:assert/strict';
 

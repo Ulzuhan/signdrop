@@ -1,7 +1,7 @@
 /**
  * Type definitions for PAdES X.509 signatures, TSA RFC 3161 timestamps and Templates.
  */
-import { StampItem } from './types';
+import { StampItem } from '../types';
 
 export interface DigitalCertificateInfo {
   commonName: string;

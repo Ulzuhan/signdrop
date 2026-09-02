@@ -17,13 +17,13 @@ import {
   Award,
 } from 'lucide-react';
 import { StampItem, PdfDocumentInfo, AuditTrailData } from '@/lib/types';
-import { DocumentTemplate } from '@/lib/pades-types';
-import { loadPdfDocument, renderPdfPage } from '@/lib/pdf-engine';
-import { sealPdfDocument } from '@/lib/pdf-sealer';
+import { DocumentTemplate } from '@/lib/pades/types';
+import { loadPdfDocument, renderPdfPage } from '@/lib/pdf/engine';
+import { sealPdfDocument } from '@/lib/pdf/sealer';
 import { generateRandomId } from '@/lib/crypto';
-import { requestTsaTimestamp } from '@/lib/tsa-client';
+import { requestTsaTimestamp } from '@/lib/tsa/client';
 import { calculateSha256 } from '@/lib/crypto';
-import { ParsedPkcs12 } from '@/lib/pades-signer';
+import { ParsedPkcs12 } from '@/lib/pades/signer';
 import { StampItemOverlay } from './stamp-item';
 import { SignatureModal } from './signature-modal';
 import { SealDialog } from './seal-dialog';

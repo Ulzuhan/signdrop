@@ -4,9 +4,9 @@
  */
 import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import QRCode from 'qrcode';
-import { StampItem, AuditTrailData } from './types';
-import { calculateSha256 } from './crypto';
-import { signPdfWithPades, ParsedPkcs12 } from './pades-signer';
+import { StampItem, AuditTrailData } from '../types';
+import { calculateSha256 } from '../crypto';
+import { signPdfWithPades, ParsedPkcs12 } from '../pades/signer';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   const base64 = dataUrl.split(',')[1] || dataUrl;

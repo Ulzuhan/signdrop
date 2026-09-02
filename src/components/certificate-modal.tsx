@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { X, Award, KeyRound, Check, AlertCircle, Trash2, FileKey } from 'lucide-react';
-import { parsePkcs12Bundle, ParsedPkcs12 } from '@/lib/pades-signer';
+import { parsePkcs12Bundle, ParsedPkcs12 } from '@/lib/pades/signer';
 import { toast } from 'sonner';
 
 interface CertificateModalProps {

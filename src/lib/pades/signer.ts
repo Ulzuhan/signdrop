@@ -4,8 +4,8 @@
  */
 import forge from 'node-forge';
 import { PDFDocument, PDFName, PDFDict, PDFArray, PDFHexString, PDFNumber, PDFString } from 'pdf-lib';
-import { DigitalCertificateInfo } from './pades-types';
-import { signatureTimeStampAttribute } from './pades-verifier';
+import { DigitalCertificateInfo } from './types';
+import { signatureTimeStampAttribute } from './verifier';
 
 export interface ParsedPkcs12 {
   cert: forge.pki.Certificate;

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { X, BookmarkPlus, Layers, Download, Upload, Trash2, Check, FileText } from 'lucide-react';
-import { DocumentTemplate } from '@/lib/pades-types';
+import { DocumentTemplate } from '@/lib/pades/types';
 import { StampItem } from '@/lib/types';
 import {
   getTemplates,

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, ShieldCheck, Download, Send, Check, Copy, ExternalLink, Award, Clock, FileKey } from 'lucide-react';
-import { ParsedPkcs12 } from '@/lib/pades-signer';
+import { ParsedPkcs12 } from '@/lib/pades/signer';
 import { toast } from 'sonner';
 
 interface SealDialogProps {

@@ -3,8 +3,8 @@
 import React, { useRef, useState } from 'react';
 import { ShieldCheck, ShieldAlert, ShieldQuestion, FileSearch, ArrowLeft, Copy, Check, Clock, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
-import { verifyPdfSignatures, type PdfVerification, type SignatureReport, type CertificateSummary, type TrustAnchor, type TrustReport } from '@/lib/pades-verifier';
-import { inspectSignedPdf } from '@/lib/pdf-engine';
+import { verifyPdfSignatures, type PdfVerification, type SignatureReport, type CertificateSummary, type TrustAnchor, type TrustReport } from '@/lib/pades/verifier';
+import { inspectSignedPdf } from '@/lib/pdf/engine';
 import { formatShortHash } from '@/lib/crypto';
 
 /**

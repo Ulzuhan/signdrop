@@ -3,9 +3,9 @@
  * Automated test suite for SignDrop PDF Signing & Integrity Engine.
  */
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { sealPdfDocument } from '../src/lib/pdf-sealer.ts';
+import { sealPdfDocument } from '../src/lib/pdf/sealer.ts';
 import { calculateSha256 } from '../src/lib/crypto.ts';
-import { inspectSignedPdf } from '../src/lib/pdf-engine.ts';
+import { inspectSignedPdf } from '../src/lib/pdf/engine.ts';
 import assert from 'node:assert/strict';
 
 async function runTests() {

@@ -3,8 +3,8 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
 import { KaiCorpHeader } from '@/components/kaicorp-header';
 import { KaiCorpFooter } from '@/components/kaicorp-footer';
 import { Toaster } from 'sonner';
-import { getSession } from '@/lib/auth';
-import { isOidcEnabled } from '@/lib/oidc';
+import { getSession } from '@/lib/auth/session';
+import { isOidcEnabled } from '@/lib/auth/oidc';
 import './globals.css';
 
 const display = Space_Grotesk({ variable: '--font-display', weight: ['500', '600', '700'], subsets: ['latin'] });

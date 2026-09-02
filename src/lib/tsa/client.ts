@@ -9,7 +9,7 @@
  * which certified nothing.
  */
 import forge from 'node-forge';
-import { parseTimeStampToken } from './pades-verifier';
+import { parseTimeStampToken } from '../pades/verifier';
 
 const OID_SHA256 = '2.16.840.1.101.3.4.2.1';
 

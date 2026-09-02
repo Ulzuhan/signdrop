@@ -10,10 +10,10 @@
 import forge from 'node-forge';
 import assert from 'node:assert/strict';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { parsePkcs12Bundle } from '../src/lib/pades-signer.ts';
-import { sealPdfDocument } from '../src/lib/pdf-sealer.ts';
-import { buildTimeStampRequest, parseTimeStampResponse } from '../src/lib/tsa-client.ts';
-import { verifyPdfSignatures } from '../src/lib/pades-verifier.ts';
+import { parsePkcs12Bundle } from '../src/lib/pades/signer.ts';
+import { sealPdfDocument } from '../src/lib/pdf/sealer.ts';
+import { buildTimeStampRequest, parseTimeStampResponse } from '../src/lib/tsa/client.ts';
+import { verifyPdfSignatures } from '../src/lib/pades/verifier.ts';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 

@@ -2,7 +2,7 @@
  * Template management store for reusable stamp field layouts.
  * Persisted in browser localStorage with JSON export/import.
  */
-import { DocumentTemplate, TemplateStampField } from './pades-types';
+import { DocumentTemplate, TemplateStampField } from './pades/types';
 import { StampItem } from './types';
 import { generateRandomId } from './crypto';
 

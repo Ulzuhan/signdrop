@@ -6,8 +6,8 @@
 import forge from 'node-forge';
 import { writeFileSync } from 'node:fs';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { parsePkcs12Bundle } from '../src/lib/pades-signer.ts';
-import { sealPdfDocument } from '../src/lib/pdf-sealer.ts';
+import { parsePkcs12Bundle } from '../src/lib/pades/signer.ts';
+import { sealPdfDocument } from '../src/lib/pdf/sealer.ts';
 const A = forge.asn1;
 const keys = forge.pki.rsa.generateKeyPair(2048);
 const cert = forge.pki.createCertificate();

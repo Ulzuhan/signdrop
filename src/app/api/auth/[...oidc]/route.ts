@@ -6,8 +6,8 @@ import {
   exchangeCodeForTokens,
   fetchUserInfo,
   fetchDiscoveryEndpoints,
-} from '@/lib/oidc';
-import { setSession, clearSession, savePkceState, getAndClearPkceState, getSession } from '@/lib/auth';
+} from '@/lib/auth/oidc';
+import { setSession, clearSession, savePkceState, getAndClearPkceState, getSession } from '@/lib/auth/session';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ oidc: string[] }> }) {
   const { oidc } = await params;
