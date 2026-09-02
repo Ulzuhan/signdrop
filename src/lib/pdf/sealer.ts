@@ -6,7 +6,7 @@ import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import QRCode from 'qrcode';
 import { StampItem, AuditTrailData } from '../types';
 import { calculateSha256 } from '../crypto';
-import { signPdfWithPades, ParsedPkcs12 } from '../pades/signer';
+import { signPdfWithPades, type ParsedPkcs12, type SignatureAppearance } from '../pades/signer';
 
 function dataUrlToUint8Array(dataUrl: string): Uint8Array {
   const base64 = dataUrl.split(',')[1] || dataUrl;
@@ -61,6 +61,20 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
 
   const pages = pdfDoc.getPages();
 
+  /**
+   * The stamp that becomes the signature widget, rather than a drawing.
+   *
+   * One signature, one widget: the first `signature` stamp is promoted to the
+   * appearance of the PAdES signature field, so what the reader sees IS the
+   * signature and clicking it opens the certificate. Any further signature
+   * stamps stay ordinary drawings — a PDF signature field has one widget, and
+   * pretending otherwise would put the same signature in two places with only
+   * one of them real. Without a certificate nothing is promoted: there is no
+   * signature for a widget to show.
+   */
+  const widgetStamp = p12Data ? stamps.find((s) => s.type === 'signature') ?? null : null;
+  let appearance: SignatureAppearance | undefined;
+
   // Apply visual stamps to their respective pages
   for (const stamp of stamps) {
     const pageIndex = stamp.page - 1;
@@ -74,6 +88,18 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
     const stampWidth = (stamp.width / 100) * pageWidth;
     const stampHeight = (stamp.height / 100) * pageHeight;
     const stampY = pageHeight - ((stamp.y / 100) * pageHeight) - stampHeight;
+
+    if (stamp === widgetStamp) {
+      // Not drawn here: it is handed to the signer as the widget's appearance
+      // and drawn from inside the signature field.
+      appearance = {
+        pageIndex,
+        rect: [stampX, stampY, stampWidth, stampHeight],
+        image: stamp.content?.startsWith('data:image/') ? dataUrlToUint8Array(stamp.content) : undefined,
+        lines: stamp.content && !stamp.content.startsWith('data:image/') ? [stamp.content] : undefined,
+      };
+      continue;
+    }
 
     if (stamp.type === 'signature' || stamp.type === 'initials') {
       if (stamp.content && stamp.content.startsWith('data:image/')) {
@@ -349,8 +375,9 @@ export async function sealPdfDocument(options: SealPdfOptions): Promise<{
       sealedBytes = await signPdfWithPades({
         pdfBytes: sealedBytes,
         p12Data,
-        reason: `Firmado digitalmente con PAdES por ${p12Data.info.commonName}`,
+        reason: `Digitally signed with PAdES by ${p12Data.info.commonName}`,
         timestamp,
+        appearance,
       });
       isPadesSigned = true;
     } catch (padesErr) {

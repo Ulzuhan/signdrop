@@ -59,7 +59,11 @@ export function buildTimeStampRequest(sha256Hex: string): Uint8Array {
  */
 export function parseTimeStampResponse(reply: Uint8Array): TimeStampResult {
   const A = forge.asn1;
-  const resp = A.fromDer(forge.util.binary.raw.encode(reply), false);
+  // Chunked: a TSA reply with the TSA's whole chain runs to tens of kilobytes,
+  // and forge's raw.encode passes every byte as its own argument.
+  let binary = '';
+  for (let i = 0; i < reply.length; i += 8192) binary += String.fromCharCode(...reply.subarray(i, i + 8192));
+  const resp = A.fromDer(binary, false);
   const parts = Array.isArray(resp.value) ? (resp.value as forge.asn1.Asn1[]) : [];
   if (parts.length < 1) throw new Error('The TSA reply is not a TimeStampResp');
 

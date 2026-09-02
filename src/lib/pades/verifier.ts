@@ -21,6 +21,7 @@
  */
 import forge from 'node-forge';
 import { forSignatures, forTimestamps, judgeTrust, type TrustAnchor, type TrustReport, type TrustStoreView } from '../trust/store';
+import { sha256 } from './cms';
 
 const asn1 = forge.asn1;
 
@@ -141,12 +142,27 @@ function oidOf(node: Node): string {
   return asn1.derToOid(node.value as string);
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return forge.util.bytesToHex(forge.util.binary.raw.encode(bytes));
+/**
+ * Bytes as the binary string node-forge works in.
+ *
+ * Not `forge.util.binary.raw.encode`, which is
+ * `String.fromCharCode.apply(null, bytes)` and passes every byte as a separate
+ * argument: it throws RangeError somewhere around a hundred kilobytes, so the
+ * verifier used to die on any document worth signing. Found by signing a
+ * contract three times.
+ */
+function toBinary(bytes: Uint8Array): string {
+  const CHUNK = 8192;
+  if (bytes.length <= CHUNK) return String.fromCharCode(...bytes);
+  const pieces: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    pieces.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
+  }
+  return pieces.join('');
 }
 
-function toBinary(bytes: Uint8Array): string {
-  return forge.util.binary.raw.encode(bytes);
+function bytesToHex(bytes: Uint8Array): string {
+  return forge.util.bytesToHex(toBinary(bytes));
 }
 
 function digestOf(algorithm: 'sha1' | 'sha256' | 'sha384' | 'sha512', parts: string[]): string {
@@ -262,7 +278,19 @@ interface SignerCheck {
  * Checks one SignerInfo against the content it claims to sign. `content` is
  * the binary string the signer's messageDigest must hash to.
  */
-function checkSigner(signerInfo: Node, certificates: forge.pki.Certificate[], content: string): SignerCheck {
+/**
+ * @param covered  The bytes the signature covers, produced only if needed.
+ * @param precomputed  Digests already taken of those bytes, by algorithm.
+ *   SHA-256 arrives here from WebCrypto, which is fifty times faster than
+ *   forge's JavaScript and is what a fifty-megabyte document needs; anything
+ *   else falls back to forge, which is fine because nothing else is common.
+ */
+function checkSigner(
+  signerInfo: Node,
+  certificates: forge.pki.Certificate[],
+  covered: () => string,
+  precomputed: Partial<Record<'sha1' | 'sha256' | 'sha384' | 'sha512', string>> = {}
+): SignerCheck {
   const parts = children(signerInfo);
   // version, sid, digestAlgorithm, [0] signedAttrs?, signatureAlgorithm, signature, [1] unsignedAttrs?
   const sid = parts[1];
@@ -324,7 +352,7 @@ function checkSigner(signerInfo: Node, certificates: forge.pki.Certificate[], co
     return base;
   }
 
-  const contentDigest = digestOf(algorithm, [content]);
+  const contentDigest = precomputed[algorithm] ?? digestOf(algorithm, [covered()]);
   const claimed = attributeValue(signedAttrs, OID.messageDigest);
   if (!claimed || (claimed.value as string) !== contentDigest) {
     base.reason = 'The signed content does not match what was signed: the bytes changed after signing.';
@@ -424,7 +452,8 @@ export function verifyTimeStampToken(token: Node, signatureValue: string, anchor
     report.reason = 'The token carries no TSA signature.';
     return report;
   }
-  const check = checkSigner(signer, signedData.certificates, signedData.encapsulatedContent ?? '');
+  // The TSTInfo is a few hundred bytes; forge hashes it in microseconds.
+  const check = checkSigner(signer, signedData.certificates, () => signedData.encapsulatedContent ?? '');
   report.tsa = check.certificate ? summarize(check.certificate) : null;
   if (!check.valid) {
     report.reason = check.reason ?? 'The TSA signature does not verify.';
@@ -477,14 +506,18 @@ function locateSignatures(pdf: string): Located[] {
 export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, options: VerifyOptions = {}): Promise<PdfVerification> {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   const pdf = toBinary(bytes);
-  const sha256 = forge.util.bytesToHex(digestOf('sha256', [pdf]));
+  const fileSha256 = forge.util.bytesToHex(toBinary(await sha256([bytes])));
   const signatures: SignatureReport[] = [];
   /** What the second pass needs: judging is not possible until every certificate is on the table. */
   const pending: { report: SignatureReport; certificate: forge.pki.Certificate | null; carried: forge.pki.Certificate[]; signingTime: Date | null; token: Node | null; signatureValue: string }[] = [];
 
-  locateSignatures(pdf).forEach((located, index) => {
+  const located_ = locateSignatures(pdf);
+  for (let index = 0; index < located_.length; index++) {
+    const located = located_[index];
     const [a, b, c, d] = located.byteRange;
-    const covered = pdf.substring(a, a + b) + pdf.substring(c, c + d);
+    // Built only if the signature turns out to use something other than
+    // SHA-256: for a large document it is a copy of the whole file.
+    const covered = () => pdf.substring(a, a + b) + pdf.substring(c, c + d);
     const coversWholeFile = a === 0 && c + d === pdf.length;
     const report: SignatureReport = {
       index,
@@ -510,7 +543,9 @@ export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, optio
       const signedData = parseSignedData(contentInfo);
       const signerInfo = signedData.signerInfos[0];
       if (!signerInfo) throw new Error('no SignerInfo');
-      const check = checkSigner(signerInfo, signedData.certificates, covered);
+      const check = checkSigner(signerInfo, signedData.certificates, covered, {
+        sha256: toBinary(await sha256([bytes.subarray(a, a + b), bytes.subarray(c, c + d)])),
+      });
       report.valid = check.valid;
       report.reason = check.reason;
       report.unsupported = check.unsupported;
@@ -539,7 +574,7 @@ export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, optio
       report.reason = report.reason ?? 'The signature could not be decoded as CMS/PKCS#7.';
     }
     signatures.push(report);
-  });
+  }
 
   // Second pass. The provider gets every certificate at once so it can work
   // out which territories' lists this document actually needs and fetch those
@@ -567,7 +602,7 @@ export async function verifyPdfSignatures(input: ArrayBuffer | Uint8Array, optio
 
   return {
     fileSize: bytes.length,
-    sha256,
+    sha256: fileSha256,
     signatures,
     modifiedAfterLastSignature: Boolean(last && last.valid && !last.coversWholeFile),
   };
