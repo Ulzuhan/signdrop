@@ -85,6 +85,11 @@ for (const pagina of paginas) {
   check(`${pagina} no deja salir a ningún tercero`, csp.includes("connect-src 'self'"), true);
   check(`${pagina} sirve el worker de pdf.js desde aquí`, csp.includes("worker-src 'self' blob:"), true);
   check(`${pagina} sirve las tipografías desde aquí`, csp.includes("font-src 'self'"), true);
+  // Sobre http NO puede ir: Chromium exime a loopback y WebKit no, así que
+  // Safari reescribía cada hoja de estilos y cada fuente a https y la página
+  // salía sin estilos, sin pdf.js y sin poder leer un documento. Lo encontró
+  // el proyecto Safari en CI. Detrás del túnel sí va, y ahí hace su trabajo.
+  check(`${pagina} no manda upgrade-insecure-requests por http`, csp.includes('upgrade-insecure-requests'), false);
   // El nonce cambia en cada petición: uno fijo en el build no protege de nada.
   const nonceCabecera = csp.match(/'nonce-([^']+)'/)?.[1];
   check(`${pagina} usa en el HTML el mismo nonce que anuncia`, html.includes(`nonce="${nonceCabecera}"`), true);

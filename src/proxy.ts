@@ -42,6 +42,30 @@ export function proxy(request: NextRequest) {
   const isDev = process.env.NODE_ENV === 'development';
 
   /**
+   * `upgrade-insecure-requests`, but only where there is something to upgrade
+   * TO.
+   *
+   * Chromium exempts loopback from this directive. WebKit does not: served
+   * over plain http on 127.0.0.1 it rewrote every stylesheet, font and script
+   * chunk to `https://127.0.0.1`, every one of them died in a TLS handshake,
+   * and the page came up with no styles, no pdf.js and no way to read a
+   * document. Found by the Safari project in CI, which is what it was added
+   * for.
+   *
+   * It is not only a testing problem: anybody self-hosting this behind a
+   * plain-http reverse proxy on a LAN would serve a broken page to every
+   * Safari user, and would have no idea why.
+   *
+   * The scheme comes from the proxy header first, because behind the tunnel
+   * the container itself speaks http. That header is written by the caller
+   * when there is no proxy in front, and that is fine here: this directive is
+   * defence in depth for the person receiving the response, so forcing it on
+   * or off only ever affects the browser that asked.
+   */
+  const secure =
+    request.headers.get('x-forwarded-proto')?.split(',')[0].trim() === 'https' || request.nextUrl.protocol === 'https:';
+
+  /**
    * The identity provider's origin, from the environment and never written
    * here: this repository is public and the hostname belongs to a deployment.
    * Only `form-action` needs it — the browser is redirected there by a
@@ -70,7 +94,7 @@ export function proxy(request: NextRequest) {
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
-    'upgrade-insecure-requests',
+    ...(secure ? ['upgrade-insecure-requests'] : []),
   ].join('; ');
 
   const requestHeaders = new Headers(request.headers);

@@ -26,7 +26,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  // El informe HTML también en CI: la primera vez que Safari falló, el paso
+  // que sube el artefacto no encontró nada que subir y hubo que reproducirlo
+  // a mano. Un fallo que solo ocurre en CI y no deja rastro es un fallo que
+  // se investiga dos veces.
+  reporter: process.env.CI ? [['github'], ['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
@@ -37,7 +41,7 @@ export default defineConfig({
     // Safari is where a phone signature actually happens for half the people
     // who will use this, and WebKit is the only way to find out without one.
     // Only in CI: installing it locally needs system packages and root.
-    ...(process.env.CI ? [{ name: 'safari', use: { ...devices['iPhone 14'] } }] : []),
+    ...(process.env.CI || process.env.SAFARI ? [{ name: 'safari', use: { ...devices['iPhone 14'] } }] : []),
   ],
   webServer: {
     command: 'node scripts/start.js',
