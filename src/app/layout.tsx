@@ -4,6 +4,7 @@ import { KaiCorpHeader } from '@/components/kaicorp-header';
 import { KaiCorpFooter } from '@/components/kaicorp-footer';
 import { Toaster } from 'sonner';
 import { KaiCorpAccountMenu } from '@/components/kaicorp-account-menu';
+import { InviteButton } from '@/components/invite-button';
 import { getSession } from '@/lib/auth/session';
 import { accountUrl, oidcConfigured } from '@/lib/auth/oidc';
 import './globals.css';
@@ -80,7 +81,10 @@ export default async function RootLayout({
             // `next` it answers with, which is what actually ends the session
             // at the provider — the piece four of the five got wrong before
             // it was written once.
-            <KaiCorpAccountMenu email={session.email} name={session.name} accountUrl={provider ?? undefined} />
+            <div className="flex items-center gap-2">
+              <InviteButton />
+              <KaiCorpAccountMenu email={session.email} name={session.name} accountUrl={provider ?? undefined} />
+            </div>
           ) : oidcAvailable ? (
             <div className="flex items-center gap-2">
               <a

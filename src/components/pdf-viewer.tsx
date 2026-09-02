@@ -272,7 +272,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
             title="Cargar otro documento"
           >
             <RotateCcw className="size-3.5" />
-            <span className="hidden sm:inline">Cambiar PDF</span>
+            <span className="hidden sm:inline">Change PDF</span>
           </button>
           <span className="max-w-[140px] truncate text-xs font-semibold text-foreground sm:max-w-xs">
             {documentInfo.fileName}
@@ -296,16 +296,16 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
           >
             <User className="size-3.5" />
-            <span className="hidden md:inline">Iniciales</span>
+            <span className="hidden md:inline">Initials</span>
           </button>
 
           <button
             type="button"
-            onClick={() => addStamp('text', 'Texto')}
+            onClick={() => addStamp('text', 'Text')}
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
           >
             <Type className="size-3.5" />
-            <span className="hidden md:inline">Texto</span>
+            <span className="hidden md:inline">Text</span>
           </button>
 
           <button
@@ -314,7 +314,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
           >
             <Calendar className="size-3.5" />
-            <span className="hidden md:inline">Fecha</span>
+            <span className="hidden md:inline">Date</span>
           </button>
 
           <button
@@ -323,7 +323,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
             className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-white/5 hover:text-white"
           >
             <CheckSquare className="size-3.5" />
-            <span className="hidden md:inline">Casilla</span>
+            <span className="hidden md:inline">Checkbox</span>
           </button>
 
           <span className="mx-1 h-4 w-px bg-white/10" />
@@ -348,7 +348,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({
                 ? 'bg-emerald-500/10 text-emerald-400 font-semibold'
                 : 'text-muted-foreground hover:bg-white/5 hover:text-white'
             }`}
-            title="Certificado Digital X.509 (PAdES)"
+            title="X.509 certificate (PAdES)"
           >
             <Award className="size-3.5" />
             <span className="hidden lg:inline">

@@ -48,7 +48,18 @@ export async function getPdfJs() {
 export async function loadPdfDocument(arrayBuffer: ArrayBuffer) {
   const pdfjs = await getPdfJs();
   const loadingTask = pdfjs.getDocument({
-    data: new Uint8Array(arrayBuffer),
+    /**
+     * A copy, and it has to be.
+     *
+     * pdf.js hands the bytes to its worker by TRANSFERRING them, which
+     * detaches the buffer in this thread. The workspace keeps the same
+     * ArrayBuffer to seal from later, so sealing died with "Cannot perform
+     * Construct on a detached ArrayBuffer" — after the document had been
+     * stamped and the certificate unlocked, which is the worst possible
+     * moment to lose it. Found by the browser suite; no unit test could see
+     * it, because the transfer only happens with a real worker.
+     */
+    data: new Uint8Array(arrayBuffer.slice(0)),
     cMapUrl: `${PDFJS_ASSETS}cmaps/`,
     cMapPacked: true,
     standardFontDataUrl: `${PDFJS_ASSETS}standard_fonts/`,

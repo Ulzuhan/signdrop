@@ -39,7 +39,8 @@
     "test:backchannel": "bash scripts/test-backchannel.sh",
     "test:acceso": "bash scripts/test-acceso.sh",
     "test:csp": "bash scripts/test-csp.sh",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -56,6 +57,7 @@
     "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.0.9",
     "@types/node": "^20.17.19",
     "@types/node-forge": "^1.3.14",

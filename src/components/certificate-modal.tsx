@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Award, KeyRound, Check, Trash2, FileKey } from 'lucide-react';
+import { X, Award, KeyRound, Check, Trash2, FileKey, HelpCircle } from 'lucide-react';
 import { parsePkcs12Bundle, ParsedPkcs12 } from '@/lib/pades/signer';
+import { GetACertificate } from './get-a-certificate';
+import { forgetCertificate, recallCertificate, rememberCertificate, storedCertificate } from '@/lib/vault';
 import { TrustLoader } from '@/lib/trust/loader';
 import { forSignatures, judgeTrust, type TrustReport } from '@/lib/trust/store';
 import { toast } from 'sonner';
@@ -89,7 +91,24 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   const [parsed, setParsed] = useState<ParsedPkcs12 | null>(activeCertificate);
   const [isLoading, setIsLoading] = useState(false);
   const [trust, setTrust] = useState<TrustReport | null | 'checking'>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  /** What this browser has put away, if anything. Read once, on open. */
+  const [stored, setStored] = useState<{ label: string; savedAt: number } | null>(null);
+  const [vaultPass, setVaultPass] = useState('');
+  const [wantsRemember, setWantsRemember] = useState(false);
+  const [busyVault, setBusyVault] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let vivo = true;
+    storedCertificate().then((s) => {
+      if (vivo) setStored(s);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (!parsed) return;
@@ -149,9 +168,50 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    // Remembering happens on the way out, not on unlock: by here the person
+    // has seen what the certificate is and what the trusted lists say about
+    // it, which is when "keep this" is an informed answer.
+    if (wantsRemember && p12Buffer && vaultPass.length >= 8) {
+      try {
+        await rememberCertificate(p12Buffer, vaultPass, parsed?.info.commonName ?? fileName ?? 'certificate');
+        toast.success('Kept in this browser, encrypted. Nowhere else.');
+      } catch {
+        toast.error('This browser would not store it. The certificate still works for this session.');
+      }
+    }
     onSelectCertificate(parsed);
     onClose();
+  };
+
+  const handleRecall = async () => {
+    setBusyVault(true);
+    try {
+      const bytes = await recallCertificate(vaultPass);
+      if (!bytes) {
+        toast.error('That passphrase does not open it.');
+        return;
+      }
+      setP12Buffer(bytes);
+      setFileName(stored?.label ?? 'certificate');
+      // A .p12 kept here was already opened once, so the file password is
+      // still needed — this passphrase unlocks the storage, not the key.
+      try {
+        setParsed(parsePkcs12Bundle(bytes, ''));
+        toast.success('Certificate recovered.');
+      } catch {
+        toast.info('Recovered. Now its own password.');
+      }
+      setVaultPass('');
+    } finally {
+      setBusyVault(false);
+    }
+  };
+
+  const handleForget = async () => {
+    await forgetCertificate();
+    setStored(null);
+    toast.info('Forgotten. The encrypted copy is gone from this browser.');
   };
 
   const handleClear = () => {
@@ -193,6 +253,38 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 
         {/* Content */}
         <div className="mt-4 space-y-4">
+          {!parsed && stored ? (
+            <div className="rounded-xl border p-4 sd-inset">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-foreground">{stored.label}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Kept in this browser, encrypted, since {new Date(stored.savedAt).toLocaleDateString()}. It has never
+                    been anywhere else.
+                  </p>
+                </div>
+                <button type="button" onClick={handleForget} className="shrink-0 text-[11px] text-muted-foreground hover:text-red-400">
+                  Forget it
+                </button>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="password"
+                  value={vaultPass}
+                  onChange={(e) => setVaultPass(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRecall()}
+                  placeholder="The passphrase you chose"
+                  className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary sd-line"
+                />
+                <button type="button" disabled={busyVault} onClick={handleRecall} className="sd-primary-button disabled:opacity-50">
+                  <KeyRound className="size-3.5" aria-hidden />
+                  {busyVault ? 'Opening…' : 'Use it'}
+                </button>
+              </div>
+              <p className="mt-3 text-[11px] text-muted-foreground">Or load a different file below.</p>
+            </div>
+          ) : null}
+
           {!parsed ? (
             <div>
               <label
@@ -214,6 +306,15 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
                   className="hidden"
                 />
               </label>
+
+              <button
+                type="button"
+                onClick={() => setShowHelp(true)}
+                className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+              >
+                <HelpCircle className="size-3.5" aria-hidden />
+                I do not have one — how do I get a certificate?
+              </button>
 
               {p12Buffer && (
                 <div className="mt-4 rounded-xl border p-4 sd-inset">
@@ -288,6 +389,33 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
 
               <TrustVerdict trust={trust} />
 
+              {p12Buffer && !stored && (
+                <div className="rounded-xl border p-3 sd-line">
+                  <label className="flex items-start gap-2 text-[11px] text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={wantsRemember}
+                      onChange={(e) => setWantsRemember(e.target.checked)}
+                      className="mt-0.5 size-3.5 shrink-0 accent-current"
+                    />
+                    <span>
+                      <span className="font-semibold text-foreground">Keep it in this browser</span>, encrypted with a
+                      passphrase of your own. Better than the file sitting in a downloads folder; not a key store, and
+                      no protection against somebody who already controls this machine. Forgetting it is one click.
+                    </span>
+                  </label>
+                  {wantsRemember && (
+                    <input
+                      type="password"
+                      value={vaultPass}
+                      onChange={(e) => setVaultPass(e.target.value)}
+                      placeholder="A passphrase, at least 8 characters — not the certificate's password"
+                      className="mt-2 w-full rounded-xl border bg-background px-3 py-2 text-xs text-foreground outline-none focus:border-primary sd-line"
+                    />
+                  )}
+                </div>
+              )}
+
               <div className="rounded-xl border p-3 text-[11px] text-muted-foreground sd-line">
                 <p className="flex items-center gap-1.5 text-primary">
                   <Award className="size-3.5" />
@@ -322,6 +450,8 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
           )}
         </div>
       </div>
+
+      <GetACertificate isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 };

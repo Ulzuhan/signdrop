@@ -69,8 +69,21 @@ export const SealDialog: React.FC<SealDialogProps> = ({
     toast.success('Sealed document downloaded.');
   };
 
+  /**
+   * Hand the signed document over to DocDrop.
+   *
+   * It downloads first and then opens DocDrop, and the order is the honest
+   * part: this button used to open DocDrop and nothing else, which looked
+   * like sending the document and sent nothing. The file cannot be handed
+   * across by the page — SignDrop never uploads it and DocDrop encrypts it in
+   * the browser before it does, so there is no server in the middle to pass
+   * it through, which is the point of both. The round trip by URL, the way
+   * QR-Forge does it, is for the version after this one.
+   */
   const handleSendToDocDrop = () => {
     if (!docDropUrl) return;
+    handleDownload();
+    toast.info('Downloaded. Drop it into the DocDrop tab that just opened.', { duration: 8000 });
     window.open(docDropUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -114,7 +127,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                 <Award className={`size-5 ${p12Data ? 'text-emerald-400' : 'text-muted-foreground'}`} />
                 <div>
                   <span className="text-xs font-bold text-foreground">
-                    {p12Data ? `Certificado: ${p12Data.info.commonName}` : 'PAdES signature (optional)'}
+                    {p12Data ? `Certificate: ${p12Data.info.commonName}` : 'PAdES signature (optional)'}
                   </span>
                   <p className="text-[11px] text-muted-foreground">
                     {p12Data
@@ -189,7 +202,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                   <div>
                     <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                       <Clock className="size-3 text-primary" />
-                      Sello de tiempo RFC 3161
+                      RFC 3161 time-stamp
                     </span>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {p12Data
@@ -202,7 +215,7 @@ export const SealDialog: React.FC<SealDialogProps> = ({
             </div>
 
             <div className="rounded-xl border p-3 sd-line">
-              <span className="text-[11px] font-medium text-muted-foreground">Huella SHA-256 del documento original:</span>
+              <span className="text-[11px] font-medium text-muted-foreground">SHA-256 of the original document</span>
               <div className="mt-1 flex items-center justify-between font-mono text-[11px] text-primary">
                 <span className="truncate">{originalHash}</span>
                 <button
@@ -291,9 +304,15 @@ export const SealDialog: React.FC<SealDialogProps> = ({
                   className="flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-white sd-inset"
                 >
                   <Send className="size-3.5 text-primary" />
-                  Send an encrypted copy through DocDrop
+                  Download and open DocDrop
                   <ExternalLink className="size-3" />
                 </button>
+              )}
+              {docDropUrl && (
+                <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                  The file goes from this browser to that one by way of your own disk. Neither service ever holds it
+                  unencrypted, which is why neither can hand it to the other directly.
+                </p>
               )}
             </div>
 

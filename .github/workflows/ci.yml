@@ -83,3 +83,18 @@ jobs:
 
       - name: The content policy, and no inline styles coming back
         run: npm run test:csp
+
+      # Last because it is the slowest, and because everything above has to
+      # hold before "a person can actually do this" is worth asking.
+      - name: Install the browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: A contract signed and checked, on a desktop and on a phone
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

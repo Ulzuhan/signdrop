@@ -279,7 +279,7 @@ export default function VerifyPage() {
                   v.modifiedAfterLastSignature
                     ? 'The signed bytes are intact, but data was added to the file after the last signature. Whatever was added is not covered by it.'
                     : validSignatures.every((s) => s.trust?.trusted)
-                      ? 'The bytes each signature covers are exactly what was signed, and every certificate chains to a qualified authority on the Spanish trusted list.'
+                      ? 'The bytes each signature covers are exactly what was signed, and every certificate chains to a qualified authority on an EU trusted list.'
                       : 'The bytes each signature covers are exactly what was signed. Whether to trust who signed is a separate question: see each certificate below.'
                 }
               />

@@ -174,7 +174,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             }`}
           >
             <PenTool className="size-3.5" />
-            Dibujar
+            Draw
           </button>
           <button
             onClick={() => setTab('type')}
@@ -185,7 +185,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             }`}
           >
             <Type className="size-3.5" />
-            Escribir
+            Type
           </button>
           <button
             onClick={() => setTab('upload')}
@@ -196,7 +196,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
             }`}
           >
             <Upload className="size-3.5" />
-            Subir imagen
+            Upload
           </button>
         </div>
 
