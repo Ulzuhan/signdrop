@@ -1,6 +1,6 @@
 {
   "name": "signdrop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Client-side PDF signing and verification: PAdES signatures, RFC 3161 time-stamps, and certificates checked against the EU trusted lists. The document never leaves the browser.",
   "license": "MIT",
   "author": "Ulzuhan (https://github.com/Ulzuhan)",

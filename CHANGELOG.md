@@ -4,7 +4,25 @@ Kept by hand, in the order things happened, with the reasoning where it is
 not obvious. Versions follow [semver](https://semver.org/); `0.x` until what
 is built justifies more.
 
-## [0.1.0] — unreleased
+## [0.1.1] — 2026-09-02
+
+### Fixed
+
+- **The content policy left Safari with no page.**
+  `upgrade-insecure-requests` was sent unconditionally. Chromium exempts
+  loopback from it; WebKit does not, so served over plain http every
+  stylesheet, font and script chunk was rewritten to `https://` and died in a
+  TLS handshake. Anybody self-hosting behind a plain-http reverse proxy was
+  serving a broken page to every Safari visitor. The directive now goes out
+  only when the request arrived over https, and a test asserts it does not
+  when it did not.
+
+  0.1.0 shipped with this. It was tagged before the browser suite finished,
+  which is the mistake underneath the bug — the tag is left where it is
+  rather than moved, so the image published under it keeps meaning what it
+  meant.
+
+## [0.1.0] — 2026-09-02
 
 The first version whose promises are all measured. What came before was three
 days old, called itself `1.0.0`, and claimed four things it did not do.
