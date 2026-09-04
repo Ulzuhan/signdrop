@@ -4,7 +4,7 @@
 
 ## Context
 
-The other five services on this platform share one model: an account approved
+The other services on this platform share one model: an account approved
 by hand in Authentik, and the whole application behind it. It is consistent,
 it is easy to reason about, and applied here it would break the product.
 
@@ -58,5 +58,5 @@ assertions in the access suite exist only to keep that true.
 **No accounts at all.** Rejected: the time-stamp proxy would be free capacity
 for anyone who found the domain.
 
-**The model of the other five, unchanged.** Rejected: it leaves the
+**The model of the others, unchanged.** Rejected: it leaves the
 counterparty outside, and the counterparty is half the product.

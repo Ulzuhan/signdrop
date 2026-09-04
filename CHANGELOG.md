@@ -4,6 +4,32 @@ Kept by hand, in the order things happened, with the reasoning where it is
 not obvious. Versions follow [semver](https://semver.org/); `0.x` until what
 is built justifies more.
 
+## [Unreleased]
+
+### Fixed
+
+- **The environment example named a variable the code never reads.**
+  `.env.example` said `SIGNDROP_OIDC_DISCOVERY_URL`; the code reads
+  `SIGNDROP_OIDC_ISSUER`. A copy of the 0.1.1 example configured no provider
+  and said nothing about it. The example compose file had the same variable
+  and one more the code does not read; it now passes the ones it does.
+- **The example compose file pointed at our DocDrop by default**, which is the
+  one thing this repository promises not to do. The default is gone, and the
+  footer links to the KaiCorp services are off unless a deployment turns them
+  on.
+- **The environment example shipped a secret that passed the length check.**
+  Sixty-four zeros, which `cp .env.example .env` would have started production
+  with, without a word. The value is empty now and says why.
+- **The documentation claimed more than the code did.** "No deployment's URL
+  in the source" and "nothing has a default pointing at anybody's
+  infrastructure" were both false: the shared footer lists the house's
+  services, and the time-stamping authority defaults to DigiCert. "Plain HTTP
+  nowhere else" left out the OIDC token exchange over an internal base.
+  "`src/lib/` knows nothing about Next" left out the cookies. Each now says
+  what is there; the DocDrop hand-off is documented as fixed at build time,
+  which is what it is; and the half-second figure for a fifty-megabyte
+  contract says it was measured by hand.
+
 ## [0.1.1] — 2026-09-02
 
 ### Fixed
@@ -55,7 +81,10 @@ days old, called itself `1.0.0`, and claimed four things it did not do.
 - The time-stamp is requested over the signature value and embedded as
   PAdES-B-T. The audit sheet no longer prints the client's clock as a
   certified time.
-- A fifty-megabyte contract signs in 0.56 s, down from 14.9 s.
+- A fifty-megabyte contract signs in about half a second, down from fifteen.
+  Measured by hand, not by the suite, which asserts only that a
+  twelve-megabyte one signs at all: a timing assertion in CI is a flake
+  waiting to happen.
 
 ### Privacy
 
@@ -66,7 +95,10 @@ days old, called itself `1.0.0`, and claimed four things it did not do.
   fetched from Google.
 - The time-stamp proxy is rate-limited, checks what comes back is really a
   token, and logs nothing about the body. It was an open proxy.
-- No deployment's URL is in the source any more.
+- No deployment's URL is in the source SignDrop writes any more: the DocDrop
+  hand-off, the verifier QR and the audit-sheet footer take theirs from the
+  environment or the page's own origin. The shared KaiCorp chrome still lists
+  the house's services, behind `KAICORP_FOOTER_LINKS`.
 
 ### Identity
 

@@ -8,18 +8,27 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3466:3466"
+    # Only the variables the code reads; what each one does is in .env.example.
+    # Nothing here defaults to anybody's deployment: the time-stamping authority
+    # falls back to DigiCert inside the service, and the KaiCorp footer links
+    # stay off unless this environment turns them on.
     environment:
       - NODE_ENV=production
       - SIGNDROP_PORT=3466
       - SIGNDROP_HOST=0.0.0.0
       - SIGNDROP_PUBLIC_HOST=${SIGNDROP_PUBLIC_HOST:-localhost:3466}
+      - SIGNDROP_INDEXABLE=${SIGNDROP_INDEXABLE:-}
       - SIGNDROP_SESSION_SECRET=${SIGNDROP_SESSION_SECRET:-}
+      - SIGNDROP_SESSION_HOURS=${SIGNDROP_SESSION_HOURS:-12}
       - SIGNDROP_OIDC_CLIENT_ID=${SIGNDROP_OIDC_CLIENT_ID:-}
       - SIGNDROP_OIDC_CLIENT_SECRET=${SIGNDROP_OIDC_CLIENT_SECRET:-}
-      - SIGNDROP_OIDC_DISCOVERY_URL=${SIGNDROP_OIDC_DISCOVERY_URL:-}
+      - SIGNDROP_OIDC_ISSUER=${SIGNDROP_OIDC_ISSUER:-}
+      - SIGNDROP_OIDC_INTERNAL_BASE=${SIGNDROP_OIDC_INTERNAL_BASE:-}
       - SIGNDROP_OIDC_REDIRECT_URI=${SIGNDROP_OIDC_REDIRECT_URI:-}
-      - SIGNDROP_DOCDROP_URL=${SIGNDROP_DOCDROP_URL:-https://docdrop.kaicorplabs.com}
-      - KAICORP_FOOTER_LINKS=1
+      - SIGNDROP_ENROLL_URL=${SIGNDROP_ENROLL_URL:-}
+      - SIGNDROP_ACCOUNT_URL=${SIGNDROP_ACCOUNT_URL:-}
+      - SIGNDROP_TSA_URL=${SIGNDROP_TSA_URL:-}
+      - KAICORP_FOOTER_LINKS=${KAICORP_FOOTER_LINKS:-}
     read_only: true
     cap_drop:
       - ALL

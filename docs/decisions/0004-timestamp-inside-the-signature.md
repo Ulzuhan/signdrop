@@ -33,15 +33,16 @@ becomes a token a reader can verify, with its authority named and its
 qualification status stated. A qualified time-stamp needs a listed provider
 and a contract; when there is one, it is one environment variable.
 
-**Plain HTTP is allowed for this call and nowhere else.** DigiCert has no
-HTTPS endpoint — nor do Sectigo or SSL.com — and this collides with the rule
-that refuses Slovakia's trusted list over HTTP. The two are not the same
-question. A trusted list over HTTP is authenticated by nothing, so an
-attacker on the wire could insert an anchor and make a forged certificate
-look qualified. A time-stamp token authenticates itself: it is signed by the
-authority, and the verifier checks both that signature and that the token's
-imprint is the hash of *this* signature. On the wire a token can be withheld
-or corrupted; it cannot be forged or replayed.
+**Plain HTTP is allowed for this call, for the OIDC token exchange over an
+internal base, and nowhere else.** DigiCert has no HTTPS endpoint — nor do
+Sectigo or SSL.com — and this collides with the rule that refuses Slovakia's
+trusted list over HTTP. The two are not the same question. A trusted list over
+HTTP is authenticated by nothing, so an attacker on the wire could insert an
+anchor and make a forged certificate look qualified. A time-stamp token
+authenticates itself: it is signed by the authority, and the verifier checks
+both that signature and that the token's imprint is the hash of *this*
+signature. On the wire a token can be withheld or corrupted; it cannot be
+forged or replayed.
 
 The container's egress therefore has to allow HTTP to the authority, which is
 a widening of the platform's rule and is recorded here so it is not mistaken

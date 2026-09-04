@@ -73,9 +73,12 @@ npm run dev            # http://localhost:3466
 ```
 
 Signing needs `SIGNDROP_SESSION_SECRET` (`openssl rand -hex 32`) and an OIDC
-provider; `/verify` works without either. Everything in `.env.example` is
-optional and nothing has a default pointing at anybody's infrastructure: leave
-a variable unset and the feature it configures is simply absent.
+provider; `/verify` works without either. Everything else in `.env.example` is
+optional. The one default that points anywhere is the time-stamping
+authority, DigiCert, and `/verify` names it as not qualified; leave any other
+variable unset and the feature it configures is simply absent.
+`KAICORP_FOOTER_LINKS` turns on links to the KaiCorp services and belongs off
+on any other deployment.
 
 ### With Docker
 
@@ -85,10 +88,14 @@ docker run --rm -p 3466:3466 \
   ghcr.io/ulzuhan/signdrop:latest
 ```
 
+Without the OIDC variables the container serves `/verify` and reports itself
+*unhealthy*: `/api/health` answers 503 until somebody can sign in, on purpose.
+
 ## The trusted lists
 
-`public/trust/` holds one file per territory — 3,409 qualified authorities —
-rebuilt from the EU List of Trusted Lists:
+`public/trust/` holds one file per territory whose list is published over
+HTTPS — twenty-nine, with Slovakia recorded in the index as unavailable and
+why — 3,409 qualified authorities, rebuilt from the EU List of Trusted Lists:
 
 ```bash
 node scripts/update-trust-store.mjs
@@ -107,6 +114,7 @@ against verifiers that are not ours:
 
 ```bash
 npm test               # unit specs and the five behaviour suites
+npm run build          # the three below start the built server
 npm run test:acceso    # who gets in
 npm run test:backchannel   # OIDC, against a provider that really signs
 npm run test:csp       # the content policy, and no inline styles coming back
@@ -120,14 +128,16 @@ document gets two valid signatures with the first covering its own revision.
 ## How it is put together
 
 ```
-src/lib/          no React, no Next: isomorphic, and tested in Node with the
-  pdf/            same code that runs in the browser
+src/lib/          no React; isomorphic, and tested in Node with the same
+  pdf/            code that runs in the browser
   pades/          signer, verifier, and the CMS assembled by hand
   tsa/            RFC 3161 client
   trust/          the store schema, the per-country loader, the judgement
-  auth/           OIDC by discovery, sealed sessions, guest links
+  auth/           OIDC by discovery, sealed sessions, guest links — with
+                  request-origin.ts, the only code here that touches Next
 src/app/          thin routes
-public/trust/     one file per territory, plus two indexes
+public/trust/     one file per territory that publishes over HTTPS, plus two
+                  indexes
 ```
 
 Decisions that closed off an alternative are written down in

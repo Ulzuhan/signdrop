@@ -27,13 +27,18 @@ cannot be reached, though `/verify` works. `openssl rand -hex 32`.
 ```
 npm test               # unit specs, then the five behaviour suites
 npm run test:unit      # vitest, src/**/*.test.ts
+npm run test:pades     # PKCS#12, PAdES signing, the RFC 3161 request, templates
+npm run test:verify    # the verifier, against what it exists to catch
 npm run test:trust     # the EU trusted lists, extraction and loading
 npm run test:incremental   # the widget, and signing an already-signed PDF
-npm run test:acceso    # who gets in: needs a build, starts its own server
+npm run build          # the four below start the built server
+npm run test:acceso    # who gets in
 npm run test:backchannel   # OIDC round trip against a provider that really signs
 npm run test:csp       # the content policy, and no inline styles coming back
+npm run test:e2e       # Playwright, desktop and phone
+                       #   (npx playwright install chromium, once)
 npm run lint
-npx tsc --noEmit
+npx tsc --noEmit       # after the build: Next generates the route types
 ```
 
 The behaviour suites are plain scripts rather than specs on purpose: they read
@@ -43,16 +48,22 @@ underneath.
 
 ## Shape of the code
 
-- **`src/lib/` knows nothing about React or Next.** Everything about PDF, CMS,
-  ASN.1, time-stamping and trust lives there, is isomorphic, and is tested in
-  Node with the same code that runs in the browser. Routes and components are
-  thin.
+- **`src/lib/` knows nothing about React, and only `auth/` and
+  `request-origin.ts` know about Next** — the cookies and the request type.
+  Everything about PDF, CMS, ASN.1, time-stamping and trust lives there, is
+  isomorphic, and is tested in Node with the same code that runs in the
+  browser. Routes and components are thin.
 - **Errors are results, not exceptions.** A signature that cannot be decoded
   is a verdict with a reason. `any` is not used.
-- **No URL of anybody's deployment in the source.** This is an MIT repository:
-  a default pointing at our DocDrop, or our domain in the audit sheet, ships
-  our infrastructure to everyone who clones it. If a feature needs an address,
-  it comes from the environment, and without it the feature is simply absent.
+- **No URL of anybody's deployment in the source we write.** This is an MIT
+  repository: a default pointing at our DocDrop, or our domain in the audit
+  sheet, ships our infrastructure to everyone who clones it. If a feature
+  needs an address, it comes from the environment, and without it the feature
+  is simply absent. The one exception is the generated KaiCorp chrome
+  (`kaicorp-*.tsx`, synced from the kaicorplabs repository), whose service
+  links sit behind `KAICORP_FOOTER_LINKS` and stay off unless a deployment
+  turns them on. The time-stamping default, DigiCert, is not ours; ADR 4 says
+  why it is there.
 - **No inline styles.** They are classes with an `sd-` prefix in
   `signdrop-workspace.css`; `npm run test:csp` fails on the next one. The
   exception is genuinely computed geometry.

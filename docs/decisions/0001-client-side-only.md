@@ -20,7 +20,8 @@ The document is opened, stamped, signed and sealed in the browser. The server
 receives it never, stores it never, and could not produce it if asked.
 
 Concretely: no upload endpoint, no volume, no database, no accounts table.
-The only state anywhere is a sealed cookie in the visitor's own browser.
+The only durable state anywhere is in the visitor's own browser: a sealed
+cookie, and what they chose to remember there.
 
 ## Consequences
 
@@ -33,9 +34,9 @@ SignDrop the cheapest of this platform's services to operate — no backups, no
 
 - PAdES has to be implemented against node-forge and WebCrypto, and it has to
   be fast enough for a real contract in a real tab. It is: a fifty-megabyte
-  document signs in half a second, but only after the CMS was assembled by
-  hand rather than through `forge.pkcs7`, which serialised and hashed the
-  whole file three times.
+  document signs in about half a second (measured by hand, not by the suite),
+  but only after the CMS was assembled by hand rather than through
+  `forge.pkcs7`, which serialised and hashed the whole file three times.
 - There is nowhere to keep a revocation list, so back-channel logout lives in
   process memory and a restart forgets it. Written up in
   `src/lib/auth/revocations.ts` rather than hidden.

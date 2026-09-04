@@ -13,8 +13,11 @@ why something is not going to be fixed.
 
 A document is opened, stamped, signed and sealed **in the browser**. The
 server never receives it, never stores it and could not produce it if
-compelled. It holds no accounts, no database and no volume of any kind: the
-only state anywhere is a sealed cookie in the visitor's own browser.
+compelled. It holds no accounts, no database and no volume of any kind. The
+only durable state anywhere is in the visitor's own browser: the sealed
+cookie, and whatever they chose to remember there — a certificate, encrypted;
+templates. The server keeps two things in memory and loses them on restart:
+revocation marks and rate-limit counters.
 
 That shape decides most of what follows. There is very little on the server
 worth attacking, and correspondingly more that depends on the page being what
@@ -56,8 +59,10 @@ account, per invitation-issuer and per IP, checks that the reply really is a
 time-stamp token before handing it to the signer, bounds both request and
 reply, and logs nothing about the body.
 
-Plain HTTP is permitted **for this one call and nowhere else**, and the
-reasoning matters: an RFC 3161 token is signed by the authority and the
+Plain HTTP is permitted **for this call**, and otherwise only for the OIDC
+token exchange when `SIGNDROP_OIDC_INTERNAL_BASE` names an internal address
+(and for loopback in development); a trusted list is never fetched over it.
+The reasoning matters: an RFC 3161 token is signed by the authority and the
 verifier checks both that signature and that the token's imprint is the hash
 of this signature. An attacker on the wire can withhold or corrupt a token;
 they cannot forge or replay one. By contrast a trusted list over plain HTTP
@@ -74,7 +79,9 @@ which case it is encrypted with a key derived from their own passphrase.
 This is the honest limit of a browser tool: anything that can run script in
 the page can reach that key. That is what the content policy exists for —
 `script-src` allows a per-request nonce and `'strict-dynamic'`, and no inline
-script without one runs.
+script without one runs. `style-src` still allows inline styles, for the
+shared KaiCorp chrome that is generated rather than written here; SignDrop's
+own inline styles are gone and a test keeps them gone.
 
 ### Clickjacking and framing
 
@@ -98,8 +105,9 @@ is behind an invitation is quota at a time-stamping authority, not documents.
 
 Dependencies are pinned by `package-lock.json` and the image is built with
 `npm ci`. Renovate opens grouped updates weekly and security updates
-immediately. The container image is built with provenance and an SBOM and
-gated on a Trivy scan.
+immediately. The container image is built with provenance and an SBOM, and
+every published digest is scanned with Trivy for fixable critical and high
+CVEs once pushed; a red run is not deployed.
 
 The trusted lists are rebuilt monthly by a workflow that opens a pull request
 and never pushes: a trust store that updates itself unattended is a trust
