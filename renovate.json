@@ -21,8 +21,12 @@
     },
     {
       "description": "Keep security overrides on their consumers' compatible majors",
-      "matchPackageNames": ["brace-expansion"],
-      "matchUpdateTypes": ["major"],
+      "matchPackageNames": [
+        "brace-expansion"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "enabled": false
     }
   ],
@@ -35,6 +39,6 @@
     ]
   },
   "constraints": {
-    "npm": "11.21.0"
+    "npm": "12.2.0"
   }
 }

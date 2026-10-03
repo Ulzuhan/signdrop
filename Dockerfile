@@ -10,13 +10,13 @@
 # twice; `npm install` without it resolved whatever was newest that day.
 # `--ignore-scripts` because postinstall copies pdf.js's assets and the
 # source is not here yet — it runs in the builder, where it can.
-FROM node:22-alpine AS deps
+FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
 # ── Build ────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -27,7 +27,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN node scripts/copy-pdfjs-assets.mjs && npm run build
 
 # ── Runtime ──────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production \
