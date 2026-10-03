@@ -33,7 +33,7 @@ if (!existsSync(from)) {
 }
 
 mkdirSync(to, { recursive: true });
-for (const directory of ['cmaps', 'standard_fonts']) {
+for (const directory of ['cmaps', 'standard_fonts', 'iccs', 'wasm']) {
   const source = join(from, directory);
   if (!existsSync(source)) continue;
   cpSync(source, join(to, directory), { recursive: true });
@@ -48,4 +48,4 @@ const size = (dir) =>
         0
       )
     : 0;
-console.log(`[signdrop] pdf.js assets in public/pdfjs (${(size(to) / 1048576).toFixed(1)} MB): worker, cmaps, standard fonts`);
+console.log(`[signdrop] pdf.js assets in public/pdfjs (${(size(to) / 1048576).toFixed(1)} MB): worker, cmaps, standard fonts, ICC profiles and decoders`);

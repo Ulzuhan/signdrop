@@ -63,6 +63,10 @@ export async function loadPdfDocument(arrayBuffer: ArrayBuffer) {
     cMapUrl: `${PDFJS_ASSETS}cmaps/`,
     cMapPacked: true,
     standardFontDataUrl: `${PDFJS_ASSETS}standard_fonts/`,
+    iccUrl: `${PDFJS_ASSETS}iccs/`,
+    wasmUrl: `${PDFJS_ASSETS}wasm/`,
+    // Use pdf.js's JavaScript decoders under the existing strict CSP.
+    useWasm: false,
   });
   return loadingTask.promise;
 }
@@ -90,6 +94,7 @@ export async function renderPdfPage(
   ctx.scale(dpr, dpr);
 
   const renderContext = {
+    canvas: null,
     canvasContext: ctx,
     viewport: viewport,
   };
