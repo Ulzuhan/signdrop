@@ -18,6 +18,12 @@
         "patch"
       ],
       "groupName": "minor and patch"
+    },
+    {
+      "description": "Keep security overrides on their consumers' compatible majors",
+      "matchPackageNames": ["brace-expansion"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ],
   "vulnerabilityAlerts": {
