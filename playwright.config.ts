@@ -43,7 +43,7 @@ export default defineConfig({
     // Only in CI: installing it locally needs system packages and root.
     ...(process.env.CI || process.env.SAFARI ? [{ name: 'safari', use: { ...devices['iPhone 14'] } }] : []),
   ],
-  webServer: {
+  webServer: process.env.E2E_EXTERNAL_SERVER === '1' ? undefined : {
     command: 'node scripts/start.js',
     // `/` and not `/api/health`: health answers 503 without an identity
     // provider, on purpose (a service nobody can sign into is not healthy),

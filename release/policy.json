@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "lane": "preparation-only-v1",
+  "publication_authorized": false,
+  "automatic_return": false,
+  "revocations_ready": false,
+  "baseline": null,
+  "floating_tags": false
+}
