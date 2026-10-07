@@ -18,6 +18,15 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    outputs:
+      digest:
+        value: ${{ jobs.container.outputs.digest }}
+      source:
+        value: ${{ jobs.container.outputs.source }}
+
+permissions:
+  contents: read
 
 jobs:
   checks:
@@ -29,6 +38,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       # node:24 to match the runtime image in the Dockerfile.
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -38,6 +50,25 @@ jobs:
 
       - name: Verifiers that are not ours
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends poppler-utils qpdf
+
+      - name: OCI contract and disabled publication gates
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/release-policy.py
+
+      - name: Scan lockfile dependencies, including code bundled into the browser
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          version: v0.75.0
+          scanners: vuln
+          skip-dirs: node_modules,.next,.git
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+        env:
+          TRIVY_TIMEOUT: 20m
 
       - run: npm ci
 
@@ -102,12 +133,56 @@ jobs:
           retention-days: 7
 
   container:
-    name: Container build (no publication)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    name: Exact OCI, scan and isolated runtime (no publication)
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    outputs:
+      digest: ${{ steps.artifact.outputs.digest }}
+      source: ${{ steps.artifact.outputs.source }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-      - run: docker build --pull --no-cache -t signdrop:ci .
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - id: artifact
+        uses: ./.github/actions/scanned-oci
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: exact-oci-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  artifact-roundtrip:
+    needs: container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: signdrop-oci-${{ github.run_id }}
+          path: ${{ runner.temp }}/transfer
+      - name: Verify transferred OCI bytes without rebuild or registry write
+        env:
+          DIGEST: ${{ needs.container.outputs.digest }}
+          SOURCE: ${{ needs.container.outputs.source }}
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y skopeo
+          test "$(cat "$RUNNER_TEMP/transfer/signdrop-oci-source.txt")" = "$SOURCE"
+          test "$(cat "$RUNNER_TEMP/transfer/signdrop-oci-digest.txt")" = "$DIGEST"
+          tar -C "$RUNNER_TEMP/transfer" -xf "$RUNNER_TEMP/transfer/signdrop-oci.tar"
+          python3 scripts/oci-release.py verify --layout "$RUNNER_TEMP/transfer/signdrop.oci" --digest "$DIGEST" --source "$SOURCE"

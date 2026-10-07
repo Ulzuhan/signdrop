@@ -40,3 +40,7 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /.playwright/
+
+# Python OCI verification helpers
+__pycache__/
+*.pyc
