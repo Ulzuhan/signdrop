@@ -72,13 +72,13 @@ runs:
       shell: bash
       run: |
         image_id=$(python3 scripts/oci-release.py load --layout "$RUNNER_TEMP/signdrop.oci" --digest '${{ steps.build.outputs.digest }}' --source '${{ steps.source.outputs.sha }}')
-        echo "LINKUP_TEST_IMAGE=$image_id" >> "$GITHUB_ENV"
+        echo "SIGNDROP_TEST_IMAGE=$image_id" >> "$GITHUB_ENV"
     - name: Exact runtime signing plus synthetic restart and configuration-failure return
       shell: bash
       run: python3 scripts/image-rehearsal.py --image "$SIGNDROP_TEST_IMAGE" --report "$RUNNER_TEMP/signdrop-image-report.json"
     - name: Default runtime identity is uid 10001
       shell: bash
-      run: docker run --rm --entrypoint sh "$LINKUP_TEST_IMAGE" -c 'test "$(id -u)" = 10001'
+      run: docker run --rm --entrypoint sh "$SIGNDROP_TEST_IMAGE" -c 'test "$(id -u)" = 10001'
     - name: Archive exact layout for byte-preserving transfer
       shell: bash
       run: |
