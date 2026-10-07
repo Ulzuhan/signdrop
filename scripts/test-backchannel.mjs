@@ -16,7 +16,8 @@
  * apuntarlo a este proveedor falso.
  */
 import { createServer } from "node:http";
-import { createSign, generateKeyPairSync, randomUUID } from "node:crypto";
+import { createHmac, createSign, generateKeyPairSync, randomUUID } from "node:crypto";
+import { writeFileSync } from "node:fs";
 
 const BASE = process.env.BASE ?? "http://127.0.0.1:3997";
 const PUERTO_IDP = Number(process.env.PUERTO_IDP ?? 9995);
@@ -193,6 +194,14 @@ const puede = async () =>
 
 check("y la sesión sirve", await puede(), 200);
 
+// A guest invitation made before revocation must survive restart unchanged.
+const invitation = await fetch(`${BASE}/api/guest-links`, {
+  method: 'POST', headers: { cookie: cabecera(), 'content-type': 'application/json' },
+  body: JSON.stringify({ label: 'durable fixture', ttlHours: 1 }),
+});
+const guestLink = await invitation.json();
+check('se emite una invitación antes del cierre', invitation.status, 200);
+
 const cierre = await avisar(firmar({ carga: { sub: SUB_REAL } }));
 check("el aviso se atiende", cierre.status, 200);
 
@@ -203,6 +212,14 @@ const otroSub = `otro-${randomUUID()}`;
 check("revocar a alguien no toca a los demás",
   (await avisar(firmar({ carga: { sub: otroSub } }))).status, 200);
 check("y quien no fue revocado sigue fuera igualmente (ya lo estaba)", await puede(), 401);
+
+if (process.env.REVOCATION_PROOF) {
+  const secret = process.env.SIGNDROP_SESSION_SECRET ?? 'secreto-de-pruebas-con-treinta-y-dos-bytes';
+  const now = Date.now();
+  const payload = b64({ sub: 'unaffected-fixture', email: 'fixture@example.invalid', iat: now, exp: now + 3600_000 });
+  const otherCookie = `signdrop_session=${payload}.${createHmac('sha256', secret).update(payload).digest('base64url')}`;
+  writeFileSync(process.env.REVOCATION_PROOF, JSON.stringify({ revokedCookie: cabecera(), otherCookie, guestUrl: guestLink.url }), { mode: 0o600 });
+}
 
 console.log("\nY la petición mal formada");
 const sinTipo = await fetch(`${BASE}/api/auth/backchannel-logout`, { method: "POST", body: "logout_token=x" });

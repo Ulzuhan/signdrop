@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { initializeRevocations } from './scripts/revocation-store.js';
 
 /**
  * The end-to-end suite.
@@ -19,6 +23,12 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env.E2E_PORT ?? 4021);
 export const BASE_URL = `http://127.0.0.1:${PORT}`;
 export const SESSION_SECRET = 'e2e-signdrop-secret-with-at-least-32-bytes';
+
+// Each host suite gets a private store; external OCI rehearsals own theirs.
+if (process.env.E2E_EXTERNAL_SERVER !== '1' && !process.env.SIGNDROP_REVOCATION_DB) {
+  process.env.SIGNDROP_REVOCATION_DB = join(mkdtempSync(join(tmpdir(), 'signdrop-e2e-')), 'revocations.sqlite');
+  initializeRevocations();
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -56,6 +66,7 @@ export default defineConfig({
       PORT: String(PORT),
       HOSTNAME: '127.0.0.1',
       SIGNDROP_SESSION_SECRET: SESSION_SECRET,
+      SIGNDROP_REVOCATION_DB: process.env.SIGNDROP_REVOCATION_DB!,
       SIGNDROP_PUBLIC_HOST: `127.0.0.1:${PORT}`,
     },
   },

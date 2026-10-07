@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { oidcConfigured } from '@/lib/auth/oidc';
 import { sessionSecret } from '@/lib/auth/session';
+import { revocationsReady } from '@/lib/auth/revocations';
 
 /**
  * Is this instance able to do its job?
@@ -8,7 +9,7 @@ import { sessionSecret } from '@/lib/auth/session';
  * Not "is the process up" — the container's HEALTHCHECK could learn that from
  * any route. What it cannot learn from any route is whether the two things
  * that have to be configured actually are, and both fail silently: without a
- * session secret nobody can sign in, and without the OIDC client the sign-in
+ * session secret or writable revocation state nobody can sign in, and without the OIDC client the sign-in
  * button leads to a 503. A container that answers 200 while nobody can get in
  * is a container the watchdog will call healthy for as long as it lasts.
  *
@@ -24,7 +25,7 @@ import { sessionSecret } from '@/lib/auth/session';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const session = Boolean(sessionSecret());
+  const session = Boolean(sessionSecret() && revocationsReady());
   const identity = oidcConfigured();
 
   let territories = 0;

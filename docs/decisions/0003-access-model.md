@@ -37,8 +37,9 @@ file per link — a token, a counter, a revoke button — and can, because a gue
 there uploads something and DocDrop has a volume. Here there is nothing to
 upload: the link unlocks a tool that runs entirely in the guest's browser. So
 the token is an HMAC over its own contents, checked with the session secret,
-and SignDrop stays the only service of the eight with no volume, no backup and
-no `borrar-persona` (ADR 1).
+without storing guest links or documents. The later
+[durable revocation decision](../durable-revocations.md) adds an auth-only
+volume and backup obligations; guest-token signatures remain unchanged.
 
 **A single invitation cannot be revoked.** It expires — 24 hours by default,
 7 days at most — or every one of them is revoked at once by rotating

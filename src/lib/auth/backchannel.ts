@@ -18,7 +18,7 @@
  *
  * Aquí la sesión no vive en el servidor, así que lo que hace el aviso no es
  * borrarla sino apuntar a su dueño en la lista de revocación
- * (lib/revocaciones.ts). El efecto que se ve desde fuera es el mismo que en
+ * (./revocations.ts). El efecto que se ve desde fuera es el mismo que en
  * las herramientas con sesión en base de datos, que es lo que importa.
  *
  * Verificación, en el orden en que importa:
@@ -36,26 +36,6 @@ import { discover, oidcConfig, type OidcConfig } from "./oidc";
 const EVENTO_CIERRE = "http://schemas.openid.net/event/backchannel-logout";
 /** Margen para relojes que no van exactamente iguales. */
 const MARGEN_S = 120;
-
-/**
- * Anti-replay de avisos de cierre de sesión.
- *
- * La caché vive en la memoria del proceso, y aquí eso basta: hay un solo
- * contenedor por servicio y estos avisos duran segundos, no días. Si algún día
- * hubiera dos réplicas habría que llevarla a un sitio común; lo peor que pasa
- * mientras tanto es aceptar el reenvío de un aviso que ya cerró esa sesión.
- */
-const REPLAY_TTL_MS = 10 * 60 * 1000;
-const jtiVistos = new Map<string, number>();
-
-function yaVisto(jti: string): boolean {
-  const ahora = Date.now();
-  // Limpieza perezosa: sin esto el mapa crece mientras viva el proceso.
-  for (const [k, caduca] of jtiVistos) if (caduca <= ahora) jtiVistos.delete(k);
-  if (jtiVistos.has(jti)) return true;
-  jtiVistos.set(jti, ahora + REPLAY_TTL_MS);
-  return false;
-}
 
 interface Jwk {
   kid?: string;
@@ -104,6 +84,7 @@ function trozos(jwt: string): { cabecera: Record<string, unknown>; carga: Record
 export interface CierreVerificado {
   sub?: string;
   sid?: string;
+  jti: string;
 }
 
 /**
@@ -185,11 +166,7 @@ export async function verificarCierre(
   const sid = typeof carga.sid === "string" ? carga.sid : undefined;
   if (!sub && !sid) return null;
 
-  // El anti-replay va EL ÚLTIMO a propósito: sólo se apunta un `jti` que ya ha
-  // pasado todas las comprobaciones. Si se apuntara antes, cualquiera podría
-  // envenenar la caché con tokens inválidos y bloquear el cierre de sesión de
-  // verdad cuando llegara.
-  if (yaVisto(jti)) return null;
-
-  return { sub, sid };
+  // Verification has no side effects. Replay id and revocation must commit
+  // together in the route, so a failed write can be retried.
+  return { sub, sid, jti };
 }

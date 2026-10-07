@@ -35,12 +35,15 @@ ENV NODE_ENV=production \
     SIGNDROP_PORT=3466 \
     SIGNDROP_HOST=0.0.0.0 \
     PORT=3466 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    SIGNDROP_REVOCATION_DB=/var/lib/signdrop/revocations.sqlite
 
 RUN apk -U upgrade --no-cache \
  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg \
  && addgroup --system --gid 10001 signdrop \
- && adduser --system --uid 10001 --ingroup signdrop signdrop
+ && adduser --system --uid 10001 --ingroup signdrop signdrop \
+ && mkdir -m 0700 /var/lib/signdrop \
+ && chown 10001:10001 /var/lib/signdrop
 
 COPY --from=builder --chown=root:root /app/.next/standalone ./
 
