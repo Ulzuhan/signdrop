@@ -78,9 +78,9 @@ def verify(layout, expected, source):
             or config.get("config", {}).get("User") not in ("signdrop", "signdrop:signdrop", "10001", "10001:10001")
             or labels.get("org.opencontainers.image.revision") != source
             or labels.get("org.opencontainers.image.version") != policy.release_version()
-            or labels.get("io.kaicorp.signdrop.store-contract") != "browser-storage-v1"
+            or labels.get("io.kaicorp.signdrop.store-contract") != "browser-and-revocations-sqlite-v1"
             or labels.get("io.kaicorp.signdrop.data-action") != "image-only"
-            or labels.get("io.kaicorp.signdrop.auth-contract") != "sealed-session-v1"
+            or labels.get("io.kaicorp.signdrop.auth-contract") != "sealed-session-revocations-v2"
             or labels.get("io.kaicorp.signdrop.readiness-contract") != "session-identity-assets-v1"
             or any(labels.get(name)!=value for name,value in policy.release_labels().items())
             or (not policy.release_policy()["automatic_return"] and "io.kaicorp.signdrop.rollback-image" in labels)):

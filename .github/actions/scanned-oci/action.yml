@@ -40,9 +40,9 @@ runs:
         labels: |
           ${{ inputs.labels }}
           org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
-          io.kaicorp.signdrop.store-contract=browser-storage-v1
+          io.kaicorp.signdrop.store-contract=browser-and-revocations-sqlite-v1
           io.kaicorp.signdrop.data-action=image-only
-          io.kaicorp.signdrop.auth-contract=sealed-session-v1
+          io.kaicorp.signdrop.auth-contract=sealed-session-revocations-v2
           io.kaicorp.signdrop.readiness-contract=session-identity-assets-v1
           ${{ steps.policy.outputs.labels }}
         provenance: mode=max

@@ -13,11 +13,11 @@ why something is not going to be fixed.
 
 A document is opened, stamped, signed and sealed **in the browser**. The
 server never receives it, never stores it and could not produce it if
-compelled. It holds no accounts, no database and no volume of any kind. The
-only durable state anywhere is in the visitor's own browser: the sealed
-cookie, and whatever they chose to remember there — a certificate, encrypted;
-templates. The server keeps two things in memory and loses them on restart:
-revocation marks and rate-limit counters.
+compelled. It holds no accounts or documents. Certificates and templates
+remain in the visitor's browser. A private durable auth volume stores only a
+first-cut timestamp, opaque subject revocation marks and short-lived logout
+replay ids. Rate-limit counters remain in memory. See
+[the storage and return contract](docs/durable-revocations.md).
 
 That shape decides most of what follows. There is very little on the server
 worth attacking, and correspondingly more that depends on the page being what
@@ -92,9 +92,12 @@ own inline styles are gone and a test keeps them gone.
 The session is an HMAC-sealed cookie carrying the identity, valid for twelve
 hours (clamped to 1–24). Rotating `SIGNDROP_SESSION_SECRET` invalidates every
 session and every invitation at once. Back-channel logout from the provider
-revokes a live session immediately; the list of revocations is in memory, so
-a restart forgets it and the cookie's own expiry becomes the guarantee. This
-is written up in `src/lib/auth/revocations.ts`.
+revokes a live session after its mark and replay id commit durably together.
+Restart and compatible image return retain that same state. Missing or
+invalid state denies account sessions; initialization explicitly cuts prior
+account cookies without changing invitation signatures. A memory-only image
+is never a compatible return target. Provider removal without a notice still
+relies on cookie expiry.
 
 Invitations are signed with the same key under a different domain prefix, so
 one can never be presented as the other. A single invitation cannot be

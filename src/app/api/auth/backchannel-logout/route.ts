@@ -13,8 +13,8 @@ import { revoke } from '@/lib/auth/revocations';
  *
  * The session here is a sealed cookie and does not live on the server, so
  * there is nothing to delete: the subject goes on the revocation list and
- * from that instant their cookies stop counting. The list is in memory —
- * SignDrop keeps no volume — which is written up in ./revocations.ts.
+ * from that instant their cookies stop counting, including after restart.
+ * The mark and replay id are committed in the private durable auth volume.
  *
  * The status codes are the ones the specification expects: 200 when handled,
  * 400 when the token is no good. Never 401 or 403, which would make the
@@ -90,7 +90,11 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   // The cookie names the person by the provider's own `sub`, so that is what
   // the list is kept by — no lookup needed to check it when reading a cookie.
-  if (notice.sub) revoke(notice.sub);
+  try {
+    if (!revoke(notice.sub, notice.jti)) return NextResponse.json({ error: 'invalid logout_token' }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: 'revocation unavailable' }, { status: 503 });
+  }
 
   return NextResponse.json({ ok: true });
 }

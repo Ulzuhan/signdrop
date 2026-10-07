@@ -23,9 +23,9 @@ class OCITests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.layout = Path(self.tmp.name)
         (self.layout / "blobs/sha256").mkdir(parents=True)
-        labels = {"io.kaicorp.signdrop.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "org.opencontainers.image.version":oci.policy.release_version(), "io.kaicorp.signdrop.store-contract": "browser-storage-v1",
+        labels = {"io.kaicorp.signdrop.data-action": "image-only", "org.opencontainers.image.revision": SOURCE, "org.opencontainers.image.version":oci.policy.release_version(), "io.kaicorp.signdrop.store-contract": "browser-and-revocations-sqlite-v1",
                   **oci.policy.release_labels(),
-                  "io.kaicorp.signdrop.auth-contract": "sealed-session-v1", "io.kaicorp.signdrop.readiness-contract":"session-identity-assets-v1"}
+                  "io.kaicorp.signdrop.auth-contract": "sealed-session-revocations-v2", "io.kaicorp.signdrop.readiness-contract":"session-identity-assets-v1"}
         self.config = self.put({"architecture": "amd64", "os": "linux", "config": {"Labels": labels, "User": "signdrop"}})
         layer = self.put(b"synthetic layer")
         runtime = self.put({"config": self.config, "layers": [layer]})
@@ -73,13 +73,25 @@ class OCITests(unittest.TestCase):
             self.verify(root)
 
     def test_old_or_missing_auth_readiness_contracts_are_rejected(self):
-        for label in ("io.kaicorp.signdrop.auth-contract", "io.kaicorp.signdrop.readiness-contract", "org.opencontainers.image.version"):
+        for label in ("io.kaicorp.signdrop.store-contract", "io.kaicorp.signdrop.auth-contract", "io.kaicorp.signdrop.readiness-contract", "org.opencontainers.image.version"):
             root=copy.deepcopy(self.root)
             config=json.loads(oci.blob(self.layout,self.config));config["config"]["Labels"].pop(label)
             manifest=json.loads(oci.blob(self.layout,root["manifests"][0]));manifest["config"]=self.put(config)
             descriptor=self.put(manifest);descriptor["platform"]={"architecture":"amd64","os":"linux"}
             root["manifests"][0]=descriptor
             with self.subTest(label=label),self.assertRaises(oci.Refused):self.verify(root)
+
+    def test_memory_only_return_contract_cannot_pass_current_admission(self):
+        root = copy.deepcopy(self.root)
+        config = json.loads(oci.blob(self.layout, self.config))
+        config['config']['Labels']['io.kaicorp.signdrop.store-contract'] = 'browser-storage-v1'
+        config['config']['Labels']['io.kaicorp.signdrop.auth-contract'] = 'sealed-session-v1'
+        manifest = json.loads(oci.blob(self.layout, root['manifests'][0]))
+        manifest['config'] = self.put(config)
+        descriptor = self.put(manifest)
+        descriptor['platform'] = {'architecture': 'amd64', 'os': 'linux'}
+        root['manifests'][0] = descriptor
+        with self.assertRaises(oci.Refused): self.verify(root)
 
     def test_external_descriptors_and_symlinks_are_rejected(self):
         descriptor = dict(self.config, urls=["https://example.invalid/config"])

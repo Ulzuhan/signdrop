@@ -23,5 +23,8 @@ function copyDir(from, to) {
 copyDir(path.join(root, '.next', 'static'), path.join(standalone, '.next', 'static'));
 copyDir(path.join(root, 'public'), path.join(standalone, 'public'));
 fs.copyFileSync(path.join(__dirname, 'start.js'), path.join(standalone, 'start.js'));
+for (const name of ['revocation-store.js', 'init-revocations.js']) {
+  fs.copyFileSync(path.join(__dirname, name), path.join(standalone, name));
+}
 
 console.log('[signdrop] Standalone build prepared successfully (static assets + launcher).');

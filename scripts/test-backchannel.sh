@@ -11,9 +11,8 @@
 # El proveedor de mentira lo levanta el propio `.mjs`, con su JWKS, y firma de
 # verdad. Por eso el emisor apunta ahí y no a un dominio inventado.
 #
-# Aquí no hay SIGNDROP_DATA_DIR que preparar: SignDrop no guarda nada, y la
-# lista de revocación vive en la memoria del proceso — que es justamente lo
-# que esta suite comprueba que funciona.
+# El registro durable usa exclusivamente un directorio temporal privado.
+# No se toca el volumen de producción.
 #
 #   npm run test:backchannel     # hace falta un build antes (npm run build)
 set -uo pipefail
@@ -27,6 +26,10 @@ export PUERTO_IDP="${PUERTO_IDP:-9995}"
 export CLIENT_ID="signdrop-pruebas"
 WORK="$(mktemp -d)"
 LOG="$WORK/server.log"
+export SIGNDROP_SESSION_SECRET="secreto-de-pruebas-con-treinta-y-dos-bytes"
+export REVOCATION_PROOF="$WORK/revocation-proof.json"
+export SIGNDROP_REVOCATION_DB="$WORK/revocations.sqlite"
+node scripts/init-revocations.js --new || { rm -rf "$WORK"; exit 1; }
 
 EMISOR="http://127.0.0.1:$PUERTO_IDP/application/o/signdrop"
 
@@ -46,6 +49,7 @@ cleanup() {
 }
 trap 'cleanup; exit 130' INT TERM
 
+start() {
 SIGNDROP_SESSION_SECRET="secreto-de-pruebas-con-treinta-y-dos-bytes" \
   SIGNDROP_OIDC_CLIENT_ID="$CLIENT_ID" \
   SIGNDROP_OIDC_CLIENT_SECRET=secreto-de-pruebas \
@@ -67,8 +71,17 @@ if ! curl -sf -o /dev/null "$BASE/"; then
   exit 1
 fi
 
+}
+start
+
 node scripts/test-backchannel.mjs
 estado=$?
+if [ "$estado" -eq 0 ]; then
+  stop
+  start
+  node scripts/check-revoked-session.mjs
+  estado=$?
+fi
 
 # El log solo si algo falló: en verde no aporta nada y esconde el resultado.
 [ "$estado" -eq 0 ] || tail -30 "$LOG"

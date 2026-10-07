@@ -1,5 +1,5 @@
 /**
- * The session: a sealed cookie, and nothing on the server.
+ * The session: a sealed cookie, with durable revocation marks.
  *
  * Access model, after the decision recorded in docs/34 of the infrastructure
  * repository:
@@ -13,25 +13,22 @@
  *               provider, which only issues tokens for people in this
  *               application's group.
  *
- * Unlike the rest of the house the cookie carries the identity itself rather
- * than the id of a row in a user table, because SignDrop has no table and no
- * volume to put one in. That is a real trade: an account removed at the
- * provider keeps working here until the cookie expires or a back-channel
- * logout arrives, where DocDrop would notice on the next request. Twelve
- * hours, and the notice covers the ordinary case.
+ * The cookie carries the identity itself. Only revocation marks are stored
+ * server-side, in the private durable auth volume; no accounts or documents.
+ * Removal at the provider still requires its back-channel notice or expiry.
  *
  * Changing SIGNDROP_SESSION_SECRET still revokes every session at once.
  */
 import { createHmac, timingSafeEqual } from 'crypto';
 import { cookies } from 'next/headers';
 import { oidcConfigured, type OidcIdentity } from './oidc';
-import { revokedAfter } from './revocations';
+import { revokedAfter, revocationsReady } from './revocations';
 
 export const SESSION_COOKIE = 'signdrop_session';
 
 const configuredTtl = Number(process.env.SIGNDROP_SESSION_TTL_HOURS ?? process.env.SIGNDROP_SESSION_HOURS ?? 12);
 const SESSION_TTL_HOURS = Number.isFinite(configuredTtl) ? Math.min(24, Math.max(1, configuredTtl)) : 12;
-const SESSION_TTL_MS = SESSION_TTL_HOURS * 60 * 60 * 1000;
+const SESSION_TTL_MS = Math.floor(SESSION_TTL_HOURS * 60 * 60 * 1000);
 
 /**
  * The signing secret, or null.
@@ -48,7 +45,7 @@ export function sessionSecret(): string | null {
 
 /** Whether this instance can authenticate anybody at all. */
 export function isConfigured(): boolean {
-  return Boolean(sessionSecret() && oidcConfigured());
+  return Boolean(sessionSecret() && oidcConfigured() && revocationsReady());
 }
 
 export interface UserSession {
@@ -66,7 +63,7 @@ function sign(payload: string, secret: string): string {
 
 export function createSessionToken(identity: OidcIdentity): string | null {
   const secret = sessionSecret();
-  if (!secret) return null;
+  if (!secret || !revocationsReady()) return null;
   const now = Date.now();
   const payload = Buffer.from(
     JSON.stringify({ sub: identity.sub, email: identity.email, name: identity.name, iat: now, exp: now + SESSION_TTL_MS })
@@ -89,9 +86,12 @@ export function sessionFromToken(token: string | undefined): UserSession | null 
 
   try {
     const claims = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (typeof claims.exp !== 'number' || claims.exp <= Date.now()) return null;
+    if (!Number.isSafeInteger(claims.exp) || claims.exp <= Date.now()) return null;
     if (typeof claims.sub !== 'string' || typeof claims.email !== 'string') return null;
-    const iat = typeof claims.iat === 'number' ? claims.iat : claims.exp - SESSION_TTL_MS;
+    // Never infer iat using the current TTL: a configuration return could
+    // move that instant. First initialization already cuts pre-store cookies.
+    const iat = claims.iat;
+    if (!Number.isSafeInteger(iat) || iat > Date.now() || claims.exp <= iat || claims.exp - iat > 24 * 3600_000) return null;
     if (revokedAfter(claims.sub, iat)) return null;
     return { sub: claims.sub, email: claims.email, name: typeof claims.name === 'string' ? claims.name : undefined, iat };
   } catch {

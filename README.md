@@ -4,9 +4,10 @@ Sign a PDF where it already is.
 
 SignDrop stamps, seals and signs PDF documents **in the browser**. The server
 never receives the document, never stores it, and could not produce it if
-asked — it holds no files, no accounts and no database. The only thing that
-ever leaves the machine is a 32-byte hash, and only if you ask for a
-time-stamp.
+asked — it holds no documents, certificates or accounts. A private auth
+store retains only session revocations and logout replay ids; see
+[its deployment contract](docs/durable-revocations.md). The only document data
+that leaves the machine is a 32-byte hash, if you ask for a time-stamp.
 
 The signature is the real thing: a PAdES signature that Acrobat validates,
 with the certificate chained to the qualified authorities of the EU trusted

@@ -19,16 +19,17 @@ control.
 The document is opened, stamped, signed and sealed in the browser. The server
 receives it never, stores it never, and could not produce it if asked.
 
-Concretely: no upload endpoint, no volume, no database, no accounts table.
-The only durable state anywhere is in the visitor's own browser: a sealed
-cookie, and what they chose to remember there.
+Concretely: no upload endpoint, document database or accounts table.
+Documents and certificates remain in the visitor's browser. The subsequent
+[durable revocation decision](../durable-revocations.md) adds private auth
+state only, with its own persistence and recovery obligations.
 
 ## Consequences
 
 **What it buys.** The privacy claim is structural rather than a policy: there
-is nothing to subpoena, nothing to leak and nothing to back up. It makes
-SignDrop the cheapest of this platform's services to operate — no backups, no
-`borrar-persona`, no data to migrate.
+are no server-side documents to disclose, leak or back up. The small auth
+revocation store does require a backup/recovery policy; it never contains
+what a person signed.
 
 **What it costs.**
 
@@ -37,9 +38,9 @@ SignDrop the cheapest of this platform's services to operate — no backups, no
   document signs in about half a second (measured by hand, not by the suite),
   but only after the CMS was assembled by hand rather than through
   `forge.pkcs7`, which serialised and hashed the whole file three times.
-- There is nowhere to keep a revocation list, so back-channel logout lives in
-  process memory and a restart forgets it. Written up in
-  `src/lib/auth/revocations.ts` rather than hidden.
+- Account revocations now require a small private auth volume; they contain
+  opaque subjects and timestamps only. See [durable revocations](../durable-revocations.md).
+  Documents, certificates and user accounts are still never stored on the server.
 - There is nowhere to keep a guest link either, so an invitation is a signed
   token that cannot be revoked individually. See ADR 3.
 - "Send it to the other party" cannot be a server-side flow. DocDrop exists

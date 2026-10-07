@@ -4,6 +4,7 @@
  */
 const path = require('node:path');
 const fs = require('node:fs');
+const { revocationsReady } = require('./revocation-store.js');
 
 /**
  * No secret, no service.
@@ -27,6 +28,15 @@ if (Buffer.byteLength(secret, 'utf8') < 32) {
     process.exit(1);
   }
   console.warn(`${message} Sessions are disabled.`);
+}
+
+if (!revocationsReady()) {
+  const message = '[signdrop] Durable revocation store is unavailable. Initialize a private persistent volume explicitly; see docs/durable-revocations.md.';
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`${message} Refusing to start.`);
+    process.exit(1);
+  }
+  console.warn(`${message} Account sessions are disabled.`);
 }
 
 // Set default port if not provided

@@ -19,6 +19,8 @@ export BASE="http://127.0.0.1:$PORT"
 export SIGNDROP_SESSION_SECRET="secreto-de-pruebas-con-treinta-y-dos-bytes"
 WORK="$(mktemp -d)"
 LOG="$WORK/server.log"
+export SIGNDROP_REVOCATION_DB="$WORK/revocations.sqlite"
+node scripts/init-revocations.js --new || { rm -rf "$WORK"; exit 1; }
 
 server_pid=""
 
