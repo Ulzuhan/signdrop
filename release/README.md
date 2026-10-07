@@ -5,7 +5,9 @@ La publicación está deshabilitada por `policy.json` y por el validador de
 requiere otra revisión del código y autorización. No hay digest de retorno
 inventado, alias flotantes ni publicación desde main, PR o ejecución manual.
 
-CI conserva las pruebas de firma con poppler/qpdf y las suites actuales.
+CI escanea también el lock para cubrir dependencias compiladas en el navegador
+que el inventario npm del runtime podría omitir. Conserva las pruebas de firma
+con poppler/qpdf y las suites actuales.
 Después construye un único índice OCI linux/amd64 con SBOM/procedencia, lo
 escanea antes de escribir en un registro, verifica todos sus blobs y carga
 el config ID exacto. Los tests de navegador de escritorio, móvil y WebKit

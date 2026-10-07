@@ -56,6 +56,20 @@ jobs:
           python3 -m unittest discover -s scripts/tests -v
           python3 scripts/release-policy.py
 
+      - name: Scan lockfile dependencies, including code bundled into the browser
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          version: v0.75.0
+          scanners: vuln
+          skip-dirs: node_modules,.next,.git
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+        env:
+          TRIVY_TIMEOUT: 20m
+
       - run: npm ci
 
       - run: npm run lint
