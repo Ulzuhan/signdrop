@@ -101,12 +101,12 @@ class OCITests(unittest.TestCase):
         with self.assertRaises(oci.Refused):self.verify(root)
 
     def test_publication_is_impossible_from_pr_main_dispatch_or_fork(self):
-        good = {"GITHUB_REF": "refs/tags/v0.1.101", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/signdrop","GITHUB_SHA":SOURCE}
+        good = {"GITHUB_REF": "refs/tags/v0.1.3", "GITHUB_EVENT_NAME": "push", "GITHUB_REPOSITORY": "Ulzuhan/signdrop","GITHUB_SHA":SOURCE}
         with patch.dict(os.environ, good, clear=True):
-            self.assertEqual(oci.publication_context(SOURCE), "0.1.101")
+            self.assertEqual(oci.publication_context(SOURCE), "0.1.3")
         for key, value in (("GITHUB_REF", "refs/heads/main"), ("GITHUB_EVENT_NAME", "pull_request"),
                            ("GITHUB_EVENT_NAME", "workflow_dispatch"), ("GITHUB_REPOSITORY", "fork/signdrop"),
-                           ("GITHUB_REF","refs/tags/v0.1.0"),("GITHUB_REF","refs/tags/v0.1.1-rc.1"),("GITHUB_SHA","a"*40)):
+                           ("GITHUB_REF","refs/tags/v0.1.101"),("GITHUB_REF","refs/tags/v0.1.0"),("GITHUB_REF","refs/tags/v0.1.1-rc.1"),("GITHUB_SHA","a"*40)):
             with patch.dict(os.environ, dict(good, **{key: value}), clear=True):
                 with self.assertRaises(oci.Refused):
                     oci.publication_context(SOURCE)
@@ -130,7 +130,7 @@ class OCITests(unittest.TestCase):
         good=[{'verificationResult':{'signature':{'certificate':{'runInvocationURI':'https://github.com/Ulzuhan/signdrop/actions/runs/123/attempts/2','sourceRepositoryDigest':SOURCE}},'statement':{'subject':[{'name':oci.REPOSITORY,'digest':{'sha256':'c'*64}}]}}}]
         with patch.dict(os.environ,{'GITHUB_RUN_ID':'123','GITHUB_RUN_ATTEMPT':'2'},clear=True):
             with patch.object(oci,'command',return_value=json.dumps(good).encode()) as call:
-                oci.verify_publication_signature(expected,SOURCE,'0.1.101')
+                oci.verify_publication_signature(expected,SOURCE,'0.1.3')
                 self.assertIn('--deny-self-hosted-runners',call.call_args.args)
                 self.assertIn('--source-ref',call.call_args.args)
             for fault in ('run','attempt','source','subject','digest','predicate-only'):
@@ -142,12 +142,12 @@ class OCITests(unittest.TestCase):
                 elif fault=='digest':value['statement']['subject'][0]['digest']['sha256']='d'*64
                 else:value['statement']['predicate']={'runInvocationURI':cert.pop('runInvocationURI')}
                 with self.subTest(fault=fault),patch.object(oci,'command',return_value=json.dumps(wrong).encode()),self.assertRaises(oci.Refused):
-                    oci.verify_publication_signature(expected,SOURCE,'0.1.101')
+                    oci.verify_publication_signature(expected,SOURCE,'0.1.3')
 
     def test_candidate_and_promote_are_blocked_without_policy_before_registry_access(self):
         for action in ('candidate','promote'):
             args=['oci-release.py',action,'--layout',str(self.layout),'--digest','sha256:'+'c'*64,'--source',SOURCE]
-            env={'GITHUB_REF':'refs/tags/v0.1.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/signdrop','GITHUB_SHA':SOURCE}
+            env={'GITHUB_REF':'refs/tags/v0.1.3','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/signdrop','GITHUB_SHA':SOURCE}
             # Verification is already gated in this fixture. The real policy
             # subprocess refuses a tag outside the reviewed exact version.
             with patch.object(sys,'argv',args),patch.dict(os.environ,env,clear=True),patch.object(oci,'verify',return_value=self.config['digest']),patch.object(oci,'copy') as copier,patch.object(oci,'immutable_version') as registry:
@@ -156,11 +156,11 @@ class OCITests(unittest.TestCase):
 
     def test_synthetic_publisher_promotes_only_exact_version_after_signature(self):
         args=['oci-release.py','promote','--layout',str(self.layout),'--digest','sha256:'+'c'*64,'--source',SOURCE]
-        env={'GITHUB_REF':'refs/tags/v0.1.101','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/signdrop','GITHUB_SHA':SOURCE}
+        env={'GITHUB_REF':'refs/tags/v0.1.3','GITHUB_EVENT_NAME':'push','GITHUB_REPOSITORY':'Ulzuhan/signdrop','GITHUB_SHA':SOURCE}
         # Synthetic publisher fixture only; production policy always refuses.
         with patch.object(sys,'argv',args),patch.dict(os.environ,env,clear=True),patch.object(oci,'verify',return_value=self.config['digest']),patch.object(oci,'command',return_value=b''),patch.object(oci,'immutable_version'),patch.object(oci,'verify_publication_signature') as signature,patch.object(oci,'copy') as copier:
-            oci.main();signature.assert_called_once_with('sha256:'+'c'*64,SOURCE,'0.1.101')
-            copier.assert_called_once_with(self.layout,'sha256:'+'c'*64,'0.1.101')
+            oci.main();signature.assert_called_once_with('sha256:'+'c'*64,SOURCE,'0.1.3')
+            copier.assert_called_once_with(self.layout,'sha256:'+'c'*64,'0.1.3')
 
     def test_release_version_cannot_be_retagged_and_network_error_is_closed(self):
         expected = "sha256:" + hashlib.sha256(b"existing").hexdigest()

@@ -105,6 +105,8 @@ def publication_context(source=None):
     if (not match or os.environ.get("GITHUB_EVENT_NAME") != "push"
             or os.environ.get("GITHUB_REPOSITORY") != "Ulzuhan/signdrop"):
         raise Refused("publication only from a stable tag push in Ulzuhan/signdrop")
+    if match[1] != policy.release_version():
+        raise Refused("publisher tag differs from the reviewed package version")
     if source is not None and os.environ.get("GITHUB_SHA") != source:
         raise Refused("publisher source differs from the exact gated tag SHA")
     return match[1]
